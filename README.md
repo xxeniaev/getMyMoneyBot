@@ -1,5 +1,5 @@
 # getMyMoneyBot
-...
+our bot will help you to save your time buying goods with friends and roommates and won't let you forget how mush you owe. it will send each of you the reminder message.
 ## Getting Started
 ...
 ### Requirements
