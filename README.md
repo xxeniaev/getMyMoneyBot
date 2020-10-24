@@ -6,19 +6,22 @@ our bot will help you to save your time buying goods with friends and roommates 
 * 1
 * 2 
 * ...
-## Usage
-### Launch
-...
-### Examples
-...
+## Commands
+### Basic
+`/help`
+`/authors`
+### Main
+`/...`
 ## Modules
 * 1
 * 2
 * ...
-## Future versions
-* 1
-* 2
-* ...
+## Tasks
+- [ ] one
+  - [ ] subone one
+  - [ ] subone two
+- [ ] two
+- [ ] ...
 ## Authors
 * **Xenia Evdokimova** ([xxeniaev](https://github.com/xxeniaev))
 * **Danil Gorbachev** ([donilNick](https://github.com/donilNick))
