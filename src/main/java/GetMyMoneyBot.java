@@ -38,11 +38,11 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
                         sendMessage(chatId, this.answersForStates.get(State.SIGN_UP));
                         this.modelBot.commands.signUp();
                         break;
-                    case "/addReceipt": this.modelBot.commands.waitPhoto();
+                    case "/add_receipt": this.modelBot.commands.waitPhoto();
                         break;
-                    case "/myReceipts": this.modelBot.commands.viewReceipts();
+                    case "/my_receipts": this.modelBot.commands.viewReceipts();
                         break;
-                    case "/myStatistic": this.modelBot.commands.viewStatistic();
+                    case "/my_stats": this.modelBot.commands.viewStatistic();
                         break;
                     case "/authors": sendMessage(chatId, "С вами были @xxxeny и @donilg");
                         break;
