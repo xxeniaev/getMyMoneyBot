@@ -8,7 +8,7 @@ public class ModelBot{
     private String bufferAnswer;
 
     public ModelBot(){
-        this.observers = new ArrayList<IObserver>();
+        this.observers = new ArrayList<>();
         this.currentState = null;
         this.chatId = null;
         this.bufferAnswer = null;

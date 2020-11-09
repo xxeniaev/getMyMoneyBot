@@ -7,17 +7,10 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.net.MalformedURLException;
-import java.net.URISyntaxException;
-import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 
 public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     public ModelBot modelBot;
@@ -73,7 +66,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         }
     }
 
-    public void sendMessage(Long chat_id, String message_text) {
+    private void sendMessage(Long chat_id, String message_text) {
         SendMessage message = new SendMessage() // Create a message object object
                 .setChatId(chat_id)
                 .setText(message_text);
@@ -113,7 +106,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             this.sendMessage(chatId, this.answersForStates.get(this.modelBot.getCurrentState()));
     }
 
-    public void initializationAnswers()
+    private void initializationAnswers()
     {
         String text_sign = "Приветы! Используй клавиатуру ниже, чтобы " +
                 "вызывать команды :) \n\n" +
