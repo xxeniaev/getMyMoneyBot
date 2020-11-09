@@ -1,11 +1,15 @@
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.objects.File;
 import org.telegram.telegrambots.meta.api.objects.Message;
+import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.util.Dictionary;
+import java.io.FileNotFoundException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
@@ -21,18 +25,14 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     }
 
     public void onUpdateReceived(Update update) {
-
-        Message message = null;
-        Long chatId = null;
+        Message message;
+        Long chatId;
 
         if (update.hasMessage()) {
             message = update.getMessage();
             chatId = update.getMessage().getChatId();
             this.modelBot.setCurrentStateUser(chatId);
-            // We check if the update has a message and the message has text
-            //this.sendMessage(chatId, "Current" + modelBot.getCurrentState());
-            if (message.hasText()) {
-                // Set variables
+            if (message.isCommand()) {
                 switch (message.getText()) {
                     case "/start":
                         sendMessage(chatId, this.answersForStates.get(State.SIGN_UP));
@@ -51,16 +51,22 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
                 }
             }
             else if (message.hasPhoto() && this.modelBot.getCurrentState() == State.WAIT_PHOTO) {
-                this.modelBot.commands.addReceipt();
+                try {
+                    this.modelBot.commands.addReceipt(this.getLinkPhoto(message));
+                } catch (TelegramApiException e) {
+                    e.printStackTrace();
+                } catch (FileNotFoundException e) {
+                    sendMessage(chatId, "К сожалению, мы не смогли прочитать QR-код");
+                    this.modelBot.commands.waitPhoto();
+                }
             }
             else {
                 sendMessage(chatId, "К сожалению, я не понимаю Вас.");
             }
-            //this.sendMessage(chatId, "Current" + modelBot.getCurrentState());
         }
     }
 
-    public void sendMessage(Long chat_id, String message_text) {
+    private void sendMessage(Long chat_id, String message_text) {
         SendMessage message = new SendMessage() // Create a message object object
                 .setChatId(chat_id)
                 .setText(message_text);
@@ -69,6 +75,16 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
+    }
+
+    private String getLinkPhoto(Message message) throws TelegramApiException {
+        List<PhotoSize> photos = message.getPhoto();
+        String photo_id = message.getPhoto().get(photos.size() - 1).getFileId();
+        GetFile gf = new GetFile();
+        gf.setFileId(photo_id);
+        File file = this.execute(gf);
+        return "https://api.telegram.org/file/bot" + this.getBotToken() +
+                "/"+file.getFilePath();
     }
 
     public String getBotUsername() {
@@ -90,7 +106,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             this.sendMessage(chatId, this.answersForStates.get(this.modelBot.getCurrentState()));
     }
 
-    public void initializationAnswers()
+    private void initializationAnswers()
     {
         String text_sign = "Приветы! Используй клавиатуру ниже, чтобы " +
                 "вызывать команды :) \n\n" +
