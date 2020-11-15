@@ -8,7 +8,7 @@ public class ModelBot{
     private String bufferAnswer;
 
     public ModelBot(){
-        this.observers = new ArrayList<IObserver>();
+        this.observers = new ArrayList<>();
         this.currentState = null;
         this.chatId = null;
         this.bufferAnswer = null;
@@ -41,8 +41,8 @@ public class ModelBot{
         /*Должен вызываться не чтобы установить State из базы
          * данных, а поменять State из метода и сообщить об этом
          * подписчикам*/
-                this.setCurrentState(state);
-                this.notifyObservers();
+        this.setCurrentState(state);
+        this.notifyObservers();
     }
 
     public State getCurrentState(){

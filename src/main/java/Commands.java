@@ -1,4 +1,6 @@
-import org.telegram.telegrambots.meta.api.objects.PhotoSize;
+import java.io.FileNotFoundException;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 public class Commands {
     public ModelBot modelBot;
@@ -31,10 +33,10 @@ public class Commands {
         this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
     }
 
-    public void addReceipt() {
-        //получение фото
+    public void addReceipt(String linkPhoto) throws FileNotFoundException {
         this.modelBot.setCurrentStateUser(State.MAKE_RECEIPT);
-        this.getQRCode();
+        String decodeText = this.getQRCode(linkPhoto);
+        this.modelBot.setBufferAnswer(decodeText);
         this.getProducts();
         this.calculateCost();
         this.updateStatistic();
@@ -42,7 +44,20 @@ public class Commands {
         this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
     }
 
-    private void getQRCode() {
+    private String getQRCode(String linkPhoto) throws FileNotFoundException {
+        String decodeText;
+        BarCodeDecode dec = new BarCodeDecode();
+        URL url = null;
+        try {
+            url = new URL(linkPhoto);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        decodeText = dec.getQRString(url);
+        if (decodeText == null) {
+            throw new FileNotFoundException("Не смогли получить QR");
+        }
+        return decodeText;
     }
 
     private void getProducts() {
