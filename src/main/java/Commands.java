@@ -1,6 +1,10 @@
 import java.io.FileNotFoundException;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 
 public class Commands {
     public ModelBot modelBot;
@@ -33,10 +37,11 @@ public class Commands {
         this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
     }
 
-    public void addReceipt(String linkPhoto) throws FileNotFoundException {
+    public void addReceipt(String linkPhoto) throws FileNotFoundException, UnsupportedEncodingException {
         this.modelBot.setCurrentStateUser(State.MAKE_RECEIPT);
-        String decodeText = this.getQRCode(linkPhoto);
-        this.modelBot.setBufferAnswer(decodeText);
+        HashMap<String, String> params = this.getQRCode(linkPhoto);
+        System.out.println(params);
+        this.modelBot.setBufferAnswer("rtyu");
         this.getProducts();
         this.calculateCost();
         this.updateStatistic();
@@ -44,7 +49,7 @@ public class Commands {
         this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
     }
 
-    private String getQRCode(String linkPhoto) throws FileNotFoundException {
+    private HashMap<String, String> getQRCode(String linkPhoto) throws FileNotFoundException, UnsupportedEncodingException {
         String decodeText;
         BarCodeDecode dec = new BarCodeDecode();
         URL url = null;
@@ -57,7 +62,17 @@ public class Commands {
         if (decodeText == null) {
             throw new FileNotFoundException("Не смогли получить QR");
         }
-        return decodeText;
+        return splitQuery(decodeText);
+    }
+
+    public static HashMap<String, String> splitQuery(String query) throws UnsupportedEncodingException {
+        HashMap<String, String> query_pairs = new HashMap<>();
+        String[] pairs = query.split("&");
+        for (String pair : pairs) {
+            int idx = pair.indexOf("=");
+            query_pairs.put(URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8.toString()), URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8.toString()));
+        }
+        return query_pairs;
     }
 
     private void getProducts() {
