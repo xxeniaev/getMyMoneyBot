@@ -1,4 +1,5 @@
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -8,6 +9,7 @@ import java.util.HashMap;
 
 public class Commands {
     public ModelBot modelBot;
+    public HttpClientPost httpClientPost;
 
     public Commands(ModelBot modelBot) {this.modelBot = modelBot;}
     /*проверяем, есть ли он базе*/
@@ -37,11 +39,16 @@ public class Commands {
         this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
     }
 
-    public void addReceipt(String linkPhoto) throws FileNotFoundException, UnsupportedEncodingException {
+    public void addReceipt(String linkPhoto) throws IOException, InterruptedException {
         this.modelBot.setCurrentStateUser(State.MAKE_RECEIPT);
         HashMap<String, String> params = this.getQRCode(linkPhoto);
-        System.out.println(params);
-        this.modelBot.setBufferAnswer("rtyu");
+        // System.out.println(params);
+        this.modelBot.setBufferAnswer("http POST request received");
+
+        // создает экземпляр http клиента, отправляет запрос и получает json
+        this.httpClientPost = new HttpClientPost();
+        this.httpClientPost.sendPost(params);
+
         this.getProducts();
         this.calculateCost();
         this.updateStatistic();
@@ -66,6 +73,7 @@ public class Commands {
     }
 
     public static HashMap<String, String> splitQuery(String query) throws UnsupportedEncodingException {
+        // сплитит query полученный из QR кода и получает на выходе HashMap
         HashMap<String, String> query_pairs = new HashMap<>();
         String[] pairs = query.split("&");
         for (String pair : pairs) {

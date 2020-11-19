@@ -8,7 +8,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.FileNotFoundException;
-import java.io.UnsupportedEncodingException;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,11 +54,11 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             else if (message.hasPhoto() && this.modelBot.getCurrentState() == State.WAIT_PHOTO) {
                 try {
                     this.modelBot.commands.addReceipt(this.getLinkPhoto(message));
-                } catch (TelegramApiException | UnsupportedEncodingException e) {
-                    e.printStackTrace();
-                } catch (FileNotFoundException e) {
+                } catch (FileNotFoundException | TelegramApiException e) {
                     sendMessage(chatId, "К сожалению, мы не смогли прочитать QR-код");
                     this.modelBot.commands.waitPhoto();
+                } catch (InterruptedException | IOException e) {
+                    e.printStackTrace();
                 }
             }
             else {
