@@ -12,9 +12,9 @@ import java.util.stream.Collectors;
 
 public class HttpClientPost {
 
-    public void sendPost(HashMap<String, String> values) throws IOException, InterruptedException {
+    public static String sendPost(HashMap<String, String> values) throws IOException, InterruptedException {
         values.put("token", "644.jRDz3qu4RhaGC7LTr");
-        // System.out.println(values);
+        System.out.println(values);
 
 
         String requestBody = values.keySet().stream()
@@ -31,7 +31,7 @@ public class HttpClientPost {
         HttpResponse<String> response = client.send(request,
                 HttpResponse.BodyHandlers.ofString());
 
-        // System.out.println(response.body());
+        return response.body();
     }
 }
 

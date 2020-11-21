@@ -1,3 +1,6 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import org.json.JSONArray;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -5,11 +8,15 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 public class Commands {
     public ModelBot modelBot;
-    public HttpClientPost httpClientPost;
 
     public Commands(ModelBot modelBot) {this.modelBot = modelBot;}
     /*проверяем, есть ли он базе*/
@@ -41,13 +48,42 @@ public class Commands {
 
     public void addReceipt(String linkPhoto) throws IOException, InterruptedException {
         this.modelBot.setCurrentStateUser(State.MAKE_RECEIPT);
-        HashMap<String, String> params = this.getQRCode(linkPhoto);
-        // System.out.println(params);
-        this.modelBot.setBufferAnswer("http POST request received");
+        HashMap<String, String> params = this.getQRCode(linkPhoto); // это хэшМапа содержащая key-value параметры из QR кода
 
         // создает экземпляр http клиента, отправляет запрос и получает json
-        this.httpClientPost = new HttpClientPost();
-        this.httpClientPost.sendPost(params);
+        System.out.print(HttpClientPost.sendPost(params)); // это json
+
+        String jsonStr = HttpClientPost.sendPost(params); // создает json строку
+        Receipt receipt = Json.parseReceipt(jsonStr); // это создаёт класс чека и засовывает data и code туда
+        JsonNode data = receipt.data.get("json");
+
+        // создает массив json'ов, содержащих информацию о товаре
+        List<JsonNode> jsonNodesItems = StreamSupport
+                .stream(data.get("items").spliterator(), false)
+                .collect(Collectors.toList());
+
+        // сколько товаров в чеке
+        int n = jsonNodesItems.size();
+
+        // создаёт строку с красивым чеком для пользователя
+        StringBuilder s = new StringBuilder();
+        for(int i = 0; i < n; i++){
+            s.append(jsonNodesItems.get(i).get("name").asText())
+                    .append(": ")
+                    .append(jsonNodesItems.get(i).get("price")
+                    .asDouble()/100)
+                    .append("\n")
+                    .append("Итог: ")
+                    .append(data.get("totalSum").asDouble()/100);
+        }
+        this.modelBot.setBufferAnswer(s.toString());
+
+//          печатает каждый item отдельно
+//        if (items.isArray()) {
+//            for ( JsonNode objNode : items) {
+//                System.out.println(objNode);
+//            }
+//        }
 
         this.getProducts();
         this.calculateCost();
