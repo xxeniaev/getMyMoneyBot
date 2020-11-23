@@ -112,7 +112,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         String text_sign = "Приветы! Используй клавиатуру ниже, чтобы " +
                 "вызывать команды :) \n\n" +
                 "Хочешь увидеть авторов?\nИспользуй /authors";
-        String text_wait = "Отправь фотографию QR-кода с чека сюда)";
+        String text_wait = "Отправляй фотографию QR-кода сюда :)";
         String text_up_stat = "Мы получили твой список покупок!" +
                 "\nЧто дальше?";
         this.answersForStates.put(State.SIGN_UP, text_sign);

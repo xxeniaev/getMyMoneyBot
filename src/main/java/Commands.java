@@ -1,19 +1,5 @@
-import com.fasterxml.jackson.databind.JsonNode;
-import org.json.JSONArray;
-
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
+import java.util.HashMap;
 
 public class Commands {
     public ModelBot modelBot;
@@ -48,14 +34,12 @@ public class Commands {
 
     public void addReceipt(String linkPhoto) throws IOException, InterruptedException {
         this.modelBot.setCurrentStateUser(State.MAKE_RECEIPT);
+
         QRParamsReader qrParamsReader = new QRParamsReader(linkPhoto);
-        HashMap<String, String> params = qrParamsReader.getParams(); // это хэшМапа содержащая key-value параметры из QR кода
-
         IExtractable apiExtractor = new DetailsAPIExtractor();
-        Receipt receipt = new Receipt(apiExtractor);
-        ReceiptData receiptData = receipt.getData(params);
+        Receipt receipt = new Receipt(apiExtractor, qrParamsReader);
 
-        this.modelBot.setBufferAnswer(receipt.createReceiptForUser(receiptData));
+        this.modelBot.setBufferAnswer(receipt.createReceiptForUser());
 
         this.getProducts();
         this.calculateCost();
