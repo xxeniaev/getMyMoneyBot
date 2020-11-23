@@ -1,6 +1,5 @@
-import java.io.FileNotFoundException;
-import java.net.MalformedURLException;
-import java.net.URL;
+import java.io.IOException;
+import java.util.HashMap;
 
 public class Commands {
     public ModelBot modelBot;
@@ -33,31 +32,20 @@ public class Commands {
         this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
     }
 
-    public void addReceipt(String linkPhoto) throws FileNotFoundException {
+    public void addReceipt(String linkPhoto) throws IOException, InterruptedException {
         this.modelBot.setCurrentStateUser(State.MAKE_RECEIPT);
-        String decodeText = this.getQRCode(linkPhoto);
-        this.modelBot.setBufferAnswer(decodeText);
+
+        QRParamsReader qrParamsReader = new QRParamsReader(linkPhoto);
+        IExtractable apiExtractor = new DetailsAPIExtractor();
+        Receipt receipt = new Receipt(apiExtractor, qrParamsReader);
+
+        this.modelBot.setBufferAnswer(receipt.createReceiptForUser());
+
         this.getProducts();
         this.calculateCost();
         this.updateStatistic();
         this.modelBot.setCurrentStateUser(State.NOTIFY_MADE_RECEIPT);
         this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
-    }
-
-    private String getQRCode(String linkPhoto) throws FileNotFoundException {
-        String decodeText;
-        BarCodeDecode dec = new BarCodeDecode();
-        URL url = null;
-        try {
-            url = new URL(linkPhoto);
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-        decodeText = dec.getQRString(url);
-        if (decodeText == null) {
-            throw new FileNotFoundException("Не смогли получить QR");
-        }
-        return decodeText;
     }
 
     private void getProducts() {
