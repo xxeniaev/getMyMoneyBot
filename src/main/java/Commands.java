@@ -48,75 +48,20 @@ public class Commands {
 
     public void addReceipt(String linkPhoto) throws IOException, InterruptedException {
         this.modelBot.setCurrentStateUser(State.MAKE_RECEIPT);
-        HashMap<String, String> params = this.getQRCode(linkPhoto); // это хэшМапа содержащая key-value параметры из QR кода
+        QRParamsReader qrParamsReader = new QRParamsReader(linkPhoto);
+        HashMap<String, String> params = qrParamsReader.getParams(); // это хэшМапа содержащая key-value параметры из QR кода
 
-        // создает экземпляр http клиента, отправляет запрос и получает json
-        System.out.print(HttpClientPost.sendPost(params)); // это json
+        IExtractable apiExtractor = new DetailsAPIExtractor();
+        Receipt receipt = new Receipt(apiExtractor);
+        ReceiptData receiptData = receipt.getData(params);
 
-        String jsonStr = HttpClientPost.sendPost(params); // создает json строку
-        Receipt receipt = Json.parseReceipt(jsonStr); // это создаёт класс чека и засовывает data и code туда
-        JsonNode data = receipt.data.get("json");
-
-        // создает массив json'ов, содержащих информацию о товаре
-        List<JsonNode> jsonNodesItems = StreamSupport
-                .stream(data.get("items").spliterator(), false)
-                .collect(Collectors.toList());
-
-        // сколько товаров в чеке
-        int n = jsonNodesItems.size();
-
-        // создаёт строку с красивым чеком для пользователя
-        StringBuilder s = new StringBuilder();
-        for(int i = 0; i < n; i++){
-            s.append(jsonNodesItems.get(i).get("name").asText())
-                    .append(": ")
-                    .append(jsonNodesItems.get(i).get("price")
-                    .asDouble()/100)
-                    .append("\n")
-                    .append("Итог: ")
-                    .append(data.get("totalSum").asDouble()/100);
-        }
-        this.modelBot.setBufferAnswer(s.toString());
-
-//          печатает каждый item отдельно
-//        if (items.isArray()) {
-//            for ( JsonNode objNode : items) {
-//                System.out.println(objNode);
-//            }
-//        }
+        this.modelBot.setBufferAnswer(receipt.createReceiptForUser(receiptData));
 
         this.getProducts();
         this.calculateCost();
         this.updateStatistic();
         this.modelBot.setCurrentStateUser(State.NOTIFY_MADE_RECEIPT);
         this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
-    }
-
-    private HashMap<String, String> getQRCode(String linkPhoto) throws FileNotFoundException, UnsupportedEncodingException {
-        String decodeText;
-        BarCodeDecode dec = new BarCodeDecode();
-        URL url = null;
-        try {
-            url = new URL(linkPhoto);
-        } catch (MalformedURLException e) {
-            e.printStackTrace();
-        }
-        decodeText = dec.getQRString(url);
-        if (decodeText == null) {
-            throw new FileNotFoundException("Не смогли получить QR");
-        }
-        return splitQuery(decodeText);
-    }
-
-    public static HashMap<String, String> splitQuery(String query) throws UnsupportedEncodingException {
-        // сплитит query полученный из QR кода и получает на выходе HashMap
-        HashMap<String, String> query_pairs = new HashMap<>();
-        String[] pairs = query.split("&");
-        for (String pair : pairs) {
-            int idx = pair.indexOf("=");
-            query_pairs.put(URLDecoder.decode(pair.substring(0, idx), StandardCharsets.UTF_8.toString()), URLDecoder.decode(pair.substring(idx + 1), StandardCharsets.UTF_8.toString()));
-        }
-        return query_pairs;
     }
 
     private void getProducts() {

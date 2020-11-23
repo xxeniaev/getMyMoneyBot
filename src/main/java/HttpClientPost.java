@@ -14,8 +14,6 @@ public class HttpClientPost {
 
     public static String sendPost(HashMap<String, String> values) throws IOException, InterruptedException {
         values.put("token", "644.jRDz3qu4RhaGC7LTr");
-        System.out.println(values);
-
 
         String requestBody = values.keySet().stream()
                 .map(key -> key + "=" + URLEncoder.encode(values.get(key), StandardCharsets.UTF_8))
