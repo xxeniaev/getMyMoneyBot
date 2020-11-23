@@ -2,20 +2,27 @@
 our bot will help you to save your time buying goods with friends and roommates and won't let you forget how mush you owe. it will send each of you the reminder message.
 ## Commands
 ### Basic
+`/start`
+
 `/help`
+
 `/authors`
 ### Main
-`/...`
-## Modules
-* 1
-* 2
-* ...
+`/add_receipt`
+
+`/my_receipts`
+
+`/my_stats`
 ## Tasks
-- [ ] вывести список покупок
-  - [ ] выборка команд
-  - [ ] чтение QR кода
-  - [ ] запросы по API
+- [x] вывести список покупок
+  - [x] выборка команд
+  - [x] чтение QR кода
+  - [x] запросы по API
 - [ ] ...
+  - [ ] тесты
+  - [ ] логирование
+  - [ ] добавление чека в БД
+  - [ ] ...
 - [ ] ...
 ## Authors
 * **Xenia Evdokimova** ([xxeniaev](https://github.com/xxeniaev))
