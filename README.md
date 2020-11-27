@@ -18,11 +18,12 @@ our bot will help you to save your time buying goods with friends and roommates 
   - [x] выборка команд
   - [x] чтение QR кода
   - [x] запросы по API
-- [ ] ...
+- [ ] показывать список чеков и открывать чек по ссылке
   - [ ] тесты
   - [ ] логирование
   - [ ] добавление чека в БД
-  - [ ] ...
+  - [ ] возможность удаления чека
+  - [ ] распределение чека между юзерами
 - [ ] ...
 ## Authors
 * **Xenia Evdokimova** ([xxeniaev](https://github.com/xxeniaev))
