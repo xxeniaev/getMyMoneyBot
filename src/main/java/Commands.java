@@ -1,16 +1,33 @@
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.WriteResult;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Commands {
     public ModelBot modelBot;
 
     public Commands(ModelBot modelBot) {this.modelBot = modelBot;}
-    public static void signUp(ModelBot modelBot, DataCommand dataCommand) {
+    public static void signUp(ModelBot modelBot, DataCommand dataCommand)
+    {
         /* тута я получаю ник и id для последующего записывания в базу,
         * если это необходимо */
         String username = dataCommand.getUsername();
         Long chatId = dataCommand.getChatID();
+
+        Firestore db = FirestoreDB.getInstance().db;
+
+        DocumentReference docRef = db.collection("users").document(username);
+        // Add document data  with id "alovelace" using a hashmap
+        Map<String, Object> data = new HashMap<>();
+        data.put("chatID", chatId);
+        //asynchronously write data
+        ApiFuture<WriteResult> result = docRef.set(data);
     }
 
     public static void viewReceipts(ModelBot modelBot, DataCommand dataCommand) {
