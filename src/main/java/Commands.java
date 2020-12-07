@@ -44,7 +44,6 @@ public class Commands {
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
-            return;
         }
     }
 
@@ -52,7 +51,6 @@ public class Commands {
     {
         if (!dataCommand.getTextMessage().equals("Да")) {
             modelBot.setCurrentStateUser(dataCommand.getChatID(), State.FAIL_CHECK_RECEIPT);
-            return;
         }
         // а тута всё, можно метод для базы данных
         /* modelBot.getUserReceipt(dataCommand.getChatID()); - обращение

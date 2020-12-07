@@ -1,4 +1,3 @@
-import org.glassfish.jersey.jaxb.internal.XmlJaxbElementProvider;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -8,15 +7,11 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
-import java.awt.desktop.AppForegroundEvent;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     public ModelBot modelBot;
@@ -150,7 +145,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         String text_up_stat = "Мы записали твой чек!" +
                 "\nЧто дальше?";
         String text_authors = "C вами были @xxxeny и @donilg";
-        String text_check_receipt = "Пожалуйста, проверьте чек (Да/Нет)";
+        String text_check_receipt = "Верно? (Да/Нет)";
         String text_fail_check_receipt = "Нет? Видимо что-то пошло не так. Попробуем снова!!!";
         this.answersForStates.put(State.SIGN_UP, text_sign);
         this.answersForStates.put(State.PRESS_ADD_RECEIPT, text_wait);
