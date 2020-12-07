@@ -1,3 +1,4 @@
+import org.glassfish.jersey.jaxb.internal.XmlJaxbElementProvider;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -7,15 +8,19 @@ import org.telegram.telegrambots.meta.api.objects.PhotoSize;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.awt.desktop.AppForegroundEvent;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.function.Consumer;
+import java.util.function.Function;
 
 public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     public ModelBot modelBot;
-    public Map<State, String> answersForStates;
+    private final Map<State, String> answersForStates;
 
     public GetMyMoneyBot()
     {
@@ -28,41 +33,53 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     public void onUpdateReceived(Update update) {
         Message message;
         Long chatId;
-
         if (update.hasMessage()) {
             message = update.getMessage();
             chatId = update.getMessage().getChatId();
-            this.modelBot.setCurrentStateUser(chatId);
-            if (message.isCommand()) {
-                switch (message.getText()) {
-                    case "/start":
-                        sendMessage(chatId, this.answersForStates.get(State.SIGN_UP));
-                        this.modelBot.commands.signUp();
-                        break;
-                    case "/add_receipt": this.modelBot.commands.waitPhoto();
-                        break;
-                    case "/my_receipts": this.modelBot.commands.viewReceipts();
-                        break;
-                    case "/my_stats": this.modelBot.commands.viewStatistic();
-                        break;
-                    case "/authors": sendMessage(chatId, "С вами были @xxxeny и @donilg");
-                        break;
-                    default:
-                        sendMessage(chatId, "К сожалению, я не понимаю Вас.");
-                }
-            }
-            else if (message.hasPhoto() && this.modelBot.getCurrentState() == State.WAIT_PHOTO) {
-                try {
-                    this.modelBot.commands.addReceipt(this.getLinkPhoto(message));
-                } catch (FileNotFoundException | TelegramApiException e) {
-                    sendMessage(chatId, "К сожалению, мы не смогли прочитать QR-код");
-                    this.modelBot.commands.waitPhoto();
-                } catch (InterruptedException | IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            State lastState = this.modelBot.getLastCurrentStateUser(chatId);
+            System.out.println(lastState);
+            this.actionCommand(message, chatId, lastState);
+            this.actionFunction(message,chatId);
+            System.out.println(this.modelBot.getUsersFault(chatId));
+            this.actionAfterFunction(chatId);
+        }
+    }
+
+    private void actionCommand(Message message, Long chatId, State lastState)
+    {
+        if (message.isCommand()) {
+            this.modelBot.setCurrentStateUser(chatId, this.modelBot.getBotStateMap(message.getText()));
+            System.out.println("1 " + this.modelBot.getCurrentStateUser(chatId));
+        }
+        else if (lastState != State.WAIT_PHOTO && lastState != State.WAIT_CHECK_RECEIPT)
+            this.modelBot.setUsersFault(chatId, Boolean.TRUE);
+    }
+
+    private void actionFunction(Message message, Long chatId) {
+        if (this.modelBot.getStateFunctionHashMap(this.modelBot.getCurrentStateUser(chatId)) != null) {
+            DataCommand data = null;
+            if (this.modelBot.getCurrentStateUser(chatId) != State.WAIT_PHOTO)
+                data = new DataCommand(message.getText(), chatId, message.getChat().getUserName());
+            else if (message.hasPhoto())
+                data = new DataCommand(this.getLinkPhoto(message), chatId, message.getChat().getUserName());
             else {
-                sendMessage(chatId, "К сожалению, я не понимаю Вас.");
+                sendMessage(chatId, "Что-то пошло не так");
+                this.modelBot.setUsersFault(chatId, Boolean.TRUE);
+            }
+            this.modelBot.getStateFunctionHashMap(
+                    this.modelBot.getCurrentStateUser(chatId)).accept(this.modelBot, data);
+            System.out.println("2 " + this.modelBot.getCurrentStateUser(chatId));
+        }
+    }
+
+    private void actionAfterFunction(Long chatId)
+    {
+        if (!this.modelBot.getUsersFault(chatId))
+        {
+            State[] states = this.modelBot.getStateAfterFunction(this.modelBot.getCurrentStateUser(chatId));
+            for (State state: states) {
+                this.modelBot.setCurrentStateUser(chatId, state);
+                System.out.println("3 " + this.modelBot.getCurrentStateUser(chatId));
             }
         }
     }
@@ -78,33 +95,50 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         }
     }
 
-    private String getLinkPhoto(Message message) throws TelegramApiException {
+    private String getLinkPhoto(Message message) {
         List<PhotoSize> photos = message.getPhoto();
         String photo_id = message.getPhoto().get(photos.size() - 1).getFileId();
         GetFile gf = new GetFile();
         gf.setFileId(photo_id);
-        File file = this.execute(gf);
+        File file = null;
+        try {
+            file = this.execute(gf);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
+        }
         return "https://api.telegram.org/file/bot" + this.getBotToken() +
                 "/"+file.getFilePath();
     }
 
     public String getBotUsername() {
         // TODO
-        return "getPoorStudentsMoneyBot";
+        Properties prop = new Properties();
+        try {
+            prop.load(this.getClass().getClassLoader().getResourceAsStream("config.properties"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return prop.getProperty("botUsername");
     }
 
     @Override
     public String getBotToken() {
         // TODO
-        return "1371432192:AAHo_acUpWsEfA8v9_xKq40hR0JRIY6kmfM";
+        Properties prop = new Properties();
+        try {
+            prop.load(this.getClass().getClassLoader().getResourceAsStream("config.properties"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return prop.getProperty("botToken");
     }
 
     public void modelIsChange(Long chatId) {
         String completeText = this.modelBot.getBufferAnswer();
         if (completeText != null)
             this.sendMessage(chatId, completeText);
-        else if (answersForStates.containsKey(this.modelBot.getCurrentState()))
-            this.sendMessage(chatId, this.answersForStates.get(this.modelBot.getCurrentState()));
+        if (answersForStates.containsKey(this.modelBot.getCurrentStateUser(chatId)))
+            this.sendMessage(chatId, this.answersForStates.get(this.modelBot.getCurrentStateUser(chatId)));
     }
 
     private void initializationAnswers()
@@ -113,10 +147,16 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
                 "вызывать команды :) \n\n" +
                 "Хочешь увидеть авторов?\nИспользуй /authors";
         String text_wait = "Отправляй фотографию QR-кода сюда :)";
-        String text_up_stat = "Мы получили твой список покупок!" +
+        String text_up_stat = "Мы записали твой чек!" +
                 "\nЧто дальше?";
+        String text_authors = "C вами были @xxxeny и @donilg";
+        String text_check_receipt = "Пожалуйста, проверьте чек (Да/Нет)";
+        String text_fail_check_receipt = "Нет? Видимо что-то пошло не так. Попробуем снова!!!";
         this.answersForStates.put(State.SIGN_UP, text_sign);
-        this.answersForStates.put(State.WAIT_PHOTO, text_wait);
+        this.answersForStates.put(State.PRESS_ADD_RECEIPT, text_wait);
+        this.answersForStates.put(State.FAIL_CHECK_RECEIPT, text_fail_check_receipt);
         this.answersForStates.put(State.NOTIFY_MADE_RECEIPT, text_up_stat);
+        this.answersForStates.put(State.WAIT_CHECK_RECEIPT, text_check_receipt);
+        this.answersForStates.put(State.VIEW_AUTHORS, text_authors);
     }
 }

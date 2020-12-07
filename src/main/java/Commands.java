@@ -1,59 +1,76 @@
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.HashMap;
+import java.io.UnsupportedEncodingException;
 
 public class Commands {
     public ModelBot modelBot;
 
     public Commands(ModelBot modelBot) {this.modelBot = modelBot;}
-    /*проверяем, есть ли он базе*/
-    /*если есть, то просто передаем управление состоянию
-     * Choose_command, иначе, создаем запись в БД*/
-    public void signUp() {
-        this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
+    public static void signUp(ModelBot modelBot, DataCommand dataCommand) {
+        /* тута я получаю ник и id для последующего записывания в базу,
+        * если это необходимо */
+        String username = dataCommand.getUsername();
+        Long chatId = dataCommand.getChatID();
     }
 
-    public void waitPhoto() {
-        this.modelBot.setCurrentStateUser(State.WAIT_PHOTO);
+    public static void viewReceipts(ModelBot modelBot, DataCommand dataCommand) {
+        // ...
+        // ...
+
     }
 
-    public void viewReceipts() {
+    public static void viewStatistic(ModelBot modelBot, DataCommand dataCommand) {
         // ...
         // ...
-        this.modelBot.setBufferAnswer("Вот твои чеки, пользуйся: ");
-        this.modelBot.setCurrentStateUser(State.VIEW_RECEIPTS);
-        this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
     }
 
-    public void viewStatistic() {
-        // ...
-        // ...
-        this.modelBot.setBufferAnswer("надо придумать, какую статистику ведём)");
-        this.modelBot.setCurrentStateUser(State.VIEW_STATISTIC);
-        this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
-    }
-
-    public void addReceipt(String linkPhoto) throws IOException, InterruptedException {
-        this.modelBot.setCurrentStateUser(State.MAKE_RECEIPT);
-
-        QRParamsReader qrParamsReader = new QRParamsReader(linkPhoto);
+    public static void addReceipt(ModelBot modelBot, DataCommand dataCommand) {
+        String linkPhoto = dataCommand.getTextMessage();
+        System.out.println(linkPhoto);
+        QRParamsReader qrParamsReader = null;
+        try {
+            qrParamsReader = new QRParamsReader(linkPhoto);
+        } catch (FileNotFoundException | UnsupportedEncodingException e) {
+            e.printStackTrace();
+            modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
+            System.out.println("Fail");
+            return;
+        }
         IExtractable apiExtractor = new DetailsAPIExtractor();
-        Receipt receipt = new Receipt(apiExtractor, qrParamsReader);
-
-        this.modelBot.setBufferAnswer(receipt.createReceiptForUser());
-
-        this.getProducts();
-        this.calculateCost();
-        this.updateStatistic();
-        this.modelBot.setCurrentStateUser(State.NOTIFY_MADE_RECEIPT);
-        this.modelBot.setCurrentStateUser(State.CHOOSE_COMMAND);
+        try {
+            Receipt receipt = new Receipt(apiExtractor, qrParamsReader);
+            modelBot.setUsersReceipt(dataCommand.getChatID(), receipt);
+            modelBot.setBufferAnswer(receipt.createReceiptForUser());
+        } catch (IOException | InterruptedException e) {
+            e.printStackTrace();
+            modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
+            return;
+        }
     }
 
-    private void getProducts() {
+    public static void addBaseData(ModelBot modelBot, DataCommand dataCommand)
+    {
+        if (!dataCommand.getTextMessage().equals("Да")) {
+            modelBot.setCurrentStateUser(dataCommand.getChatID(), State.FAIL_CHECK_RECEIPT);
+            return;
+        }
+        // а тута всё, можно метод для базы данных
+        /* modelBot.getUserReceipt(dataCommand.getChatID()); - обращение
+        к словарю, который содержит чек.
+        написал метод, чтобы чек можно было представить в виде листа из массивов string,
+        где индексы
+        0 - имя продукта
+        1 - цена за один
+        2 - количество
+        3 - сумма*/
     }
 
-    private void calculateCost() {
+    private static void getProducts() {
     }
 
-    private void updateStatistic() {
+    private static void calculateCost() {
+    }
+
+    private static void updateStatistic() {
     }
 }
