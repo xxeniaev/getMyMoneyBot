@@ -1,13 +1,7 @@
-import javax.swing.*;
-import javax.xml.crypto.Data;
-import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
-import java.util.function.Function;
 
 public class ModelBot{
     public ArrayList<IObserver> observers;

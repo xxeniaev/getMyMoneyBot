@@ -1,16 +1,12 @@
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.CollectionReference;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.WriteResult;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
 
 public class Receipt{
     private final IExtractable extractor;
@@ -69,19 +65,21 @@ public class Receipt{
 
         // чек на сумму:
         double sum = this.receiptData.data.get("totalSum").asDouble()/100;
-        // дата добавления чека
+        // дата добавления чека в бд
         DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
         Date currentDate = new Date();
-        // дата покупки(не работает)
-        // String ticketDate = this.receiptData.data.get("ticketDate").asText();
+        // дата покупки
+        String ticketDate = this.receiptData.data.get("dateTime").asText();
 
         Firestore db = FirestoreDB.getInstance().db;
         DocumentReference receipt = db.collection("users").document(chatId).collection("receipts").document();
         Map<String, Object> receiptData = new HashMap<>();
         receiptData.put("added", dateFormat.format(currentDate));
-        receiptData.put("created", "created date");
+        receiptData.put("ticket data", ticketDate
+                .replaceAll("([-])", "/").replaceAll("([T])", " "));
         receiptData.put("sum", sum);
         receiptData.put("QR-code", "QR-code");
+        receiptData.put("deleted", false);
         receipt.set(receiptData);
 
 
@@ -96,5 +94,17 @@ public class Receipt{
             goodData.put("owner", "owner");
             good.set(goodData);
         }
+    }
+
+    public void deleteReceipt(){
+        // ...
+        // ...
+
+    }
+
+    public Double divideBetweenUsers(){
+        // ...
+        // ...
+        return null;
     }
 }
