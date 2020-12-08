@@ -125,7 +125,7 @@ public class ModelBot{
         hm.put(State.WAIT_PHOTO, Commands::addReceipt);
         hm.put(State.VIEW_RECEIPTS, Commands::viewReceipts);
         hm.put(State.VIEW_STATISTIC, Commands::viewStatistic);
-        hm.put(State.WAIT_CHECK_RECEIPT, Commands::addBaseData);
+        hm.put(State.WAIT_CHECK_RECEIPT, Commands::addDataBase);
     }
 
     private void initializationStateAfterFunction(HashMap<State, State[]> hm)

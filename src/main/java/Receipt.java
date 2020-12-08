@@ -1,10 +1,16 @@
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.CollectionReference;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.Firestore;
+import com.google.cloud.firestore.WriteResult;
 
 import java.io.IOException;
 import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 public class Receipt{
     private final IExtractable extractor;
@@ -55,5 +61,40 @@ public class Receipt{
             j++;
         }
         return arrayList;
+    }
+
+    public void receiptToDatabase(String chatId)
+    {
+        System.out.print("На базу !!!!\n");
+
+        // чек на сумму:
+        double sum = this.receiptData.data.get("totalSum").asDouble()/100;
+        // дата добавления чека
+        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+        Date currentDate = new Date();
+        // дата покупки(не работает)
+        // String ticketDate = this.receiptData.data.get("ticketDate").asText();
+
+        Firestore db = FirestoreDB.getInstance().db;
+        DocumentReference receipt = db.collection("users").document(chatId).collection("receipts").document();
+        Map<String, Object> receiptData = new HashMap<>();
+        receiptData.put("added", dateFormat.format(currentDate));
+        receiptData.put("created", "created date");
+        receiptData.put("sum", sum);
+        receiptData.put("QR-code", "QR-code");
+        receipt.set(receiptData);
+
+
+        CollectionReference goods = receipt.collection("goods");
+        List<JsonNode> jsonNodesGoods = this.receiptData.getJsonNodeItems();
+        for (JsonNode jsonNodesGood : jsonNodesGoods)
+        {
+            DocumentReference good = goods.document(jsonNodesGood.get("name").asText().replaceFirst("([0-9:*]+)", ""));
+            Map<String, Object> goodData = new HashMap<>();
+            goodData.put("price", jsonNodesGood.get("price").asDouble() / 100);
+            goodData.put("quantity", jsonNodesGood.get("quantity").asDouble());
+            goodData.put("owner", "owner");
+            good.set(goodData);
+        }
     }
 }
