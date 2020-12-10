@@ -120,6 +120,8 @@ public class ModelBot{
         hm.put(State.VIEW_RECEIPTS, Commands::viewReceipts);
         hm.put(State.VIEW_STATISTIC, Commands::viewStatistic);
         hm.put(State.WAIT_CHECK_RECEIPT, Commands::addDataBase);
+        hm.put(State.WAIT_CHECK_SHARE, Commands::areThereFriends);
+        hm.put(State.WAIT_USERNAMES_FRIENDS, Commands::shareReceipt);
     }
 
     private void initializationStateAfterFunction(HashMap<State, State[]> hm)
@@ -127,8 +129,12 @@ public class ModelBot{
         hm.put(State.SIGN_UP, new State[]{State.CHOOSE_COMMAND});
         hm.put(State.PRESS_ADD_RECEIPT, new State[]{State.WAIT_PHOTO});
         hm.put(State.WAIT_PHOTO, new State[]{State.WAIT_CHECK_RECEIPT});
-        hm.put(State.WAIT_CHECK_RECEIPT, new State[]{State.NOTIFY_MADE_RECEIPT, State.CHOOSE_COMMAND});
+        hm.put(State.WAIT_CHECK_RECEIPT, new State[]{State.WAIT_CHECK_SHARE});
         hm.put(State.FAIL_CHECK_RECEIPT, new State[]{State.PRESS_ADD_RECEIPT, State.WAIT_PHOTO});
+        hm.put(State.NO_CHECK_SHARE, new State[]{State.CHOOSE_COMMAND});
+        hm.put(State.WAIT_CHECK_SHARE, new State[]{State.WAIT_USERNAMES_FRIENDS});
+        hm.put(State.WAIT_USERNAMES_FRIENDS, new State[]{State.NOTIFY_MADE_RECEIPT, State.CHOOSE_COMMAND});
+        hm.put(State.INCORRECT_USERNAMES, new State[]{State.WAIT_USERNAMES_FRIENDS});
         hm.put(State.VIEW_STATISTIC, new State[]{State.CHOOSE_COMMAND});
         hm.put(State.VIEW_RECEIPTS, new State[]{State.CHOOSE_COMMAND});
         hm.put(State.VIEW_AUTHORS, new State[]{State.CHOOSE_COMMAND});

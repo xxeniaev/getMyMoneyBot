@@ -46,8 +46,10 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             this.modelBot.setCurrentStateUser(chatId, this.modelBot.getBotStateMap(message.getText()));
             System.out.println("1 " + this.modelBot.getCurrentStateUser(chatId));
         }
-        else if (lastState != State.WAIT_PHOTO && lastState != State.WAIT_CHECK_RECEIPT)
+        else if (lastState != State.WAIT_PHOTO && lastState != State.WAIT_CHECK_RECEIPT
+            && lastState != State.WAIT_CHECK_SHARE && lastState != State.WAIT_USERNAMES_FRIENDS) {
             this.modelBot.setUsersFault(chatId, Boolean.TRUE);
+        }
     }
 
     private void actionFunction(Message message, Long chatId) {
@@ -58,7 +60,6 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             else if (message.hasPhoto())
                 data = new DataCommand(this.getLinkPhoto(message), chatId, message.getChat().getUserName());
             else {
-                sendMessage(chatId, "Что-то пошло не так");
                 this.modelBot.setUsersFault(chatId, Boolean.TRUE);
             }
             this.modelBot.getStateFunctionHashMap(
@@ -76,6 +77,9 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
                 this.modelBot.setCurrentStateUser(chatId, state);
                 System.out.println("3 " + this.modelBot.getCurrentStateUser(chatId));
             }
+        }
+        else {
+            sendMessage(chatId, "произошёл эксепшион, давай ещё раз");
         }
     }
 
@@ -142,16 +146,26 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
                 "вызывать команды :) \n\n" +
                 "Хочешь увидеть авторов?\nИспользуй /authors";
         String text_wait = "Отправляй фотографию QR-кода сюда :)";
-        String text_up_stat = "Мы записали твой чек!" +
-                "\nЧто дальше?";
+        String text_wait_share = "Мы записали твой чек!" +
+                "\nДелить его между друзьями?\n(Да/Нет)";
+        String text_up_stat = "Мы уведомили твоих компаньонов о том, " +
+                "что они должны тебе вернуть тебе червонец.";
         String text_authors = "C вами были @xxxeny и @donilg";
         String text_check_receipt = "Верно? (Да/Нет)";
         String text_fail_check_receipt = "Нет? Видимо что-то пошло не так. Попробуем снова!!!";
+        String text_no_share = "Самостоятельный, да? Что будем делать дальше?";
+        String text_send_friends = "Отправь нам usernames твоих компаньонов. " +
+                "Отправляй username через запятую.\n" +
+                "Пример: @xxxeny, @donilg\n" +
+                "Также учти, что твои друзья должны быть подписаны на этого бота.";
         this.answersForStates.put(State.SIGN_UP, text_sign);
         this.answersForStates.put(State.PRESS_ADD_RECEIPT, text_wait);
         this.answersForStates.put(State.FAIL_CHECK_RECEIPT, text_fail_check_receipt);
         this.answersForStates.put(State.NOTIFY_MADE_RECEIPT, text_up_stat);
+        this.answersForStates.put(State.WAIT_USERNAMES_FRIENDS, text_send_friends);
         this.answersForStates.put(State.WAIT_CHECK_RECEIPT, text_check_receipt);
         this.answersForStates.put(State.VIEW_AUTHORS, text_authors);
+        this.answersForStates.put(State.WAIT_CHECK_SHARE, text_wait_share);
+        this.answersForStates.put(State.NO_CHECK_SHARE, text_no_share);
     }
 }

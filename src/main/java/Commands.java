@@ -85,12 +85,33 @@ public class Commands {
         3 - сумма*/
     }
 
-    private static void getProducts() {
+    public static void areThereFriends(ModelBot modelBot, DataCommand dataCommand)
+    {
+        if (dataCommand.getTextMessage().equals("Нет")) {
+            modelBot.setCurrentStateUser(dataCommand.getChatID(), State.NO_CHECK_SHARE);
+            return;
+        }
+        else if (!dataCommand.getTextMessage().equals("Да"))
+        {
+            modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
+            return;
+        }
     }
 
-    private static void calculateCost() {
+    public static void shareReceipt(ModelBot modelBot, DataCommand dataCommand)
+    {
+        if (isStringCorrect(dataCommand.getTextMessage()))
+        {
+            //тут метод деление чека
+        }
+        else
+            modelBot.setCurrentStateUser(dataCommand.getChatID(), State.INCORRECT_USERNAMES);
     }
 
-    private static void updateStatistic() {
+    private static boolean isStringCorrect(String string)
+    {
+        String[] usernames = string.replaceAll("[@ ]", "").split(",");
+        //тут должна быть проверка ника в бд
+        return true;
     }
 }
