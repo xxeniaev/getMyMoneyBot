@@ -1,10 +1,11 @@
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.*;
 
 import java.io.IOException;
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 public class Receipt{
     private final IExtractable extractor;
@@ -40,20 +41,70 @@ public class Receipt{
         return s.toString();
     }
 
-    public ArrayList<String[]> giveElementsReceipt()
+    public void receiptToDatabase(String chatId)
     {
-        List<JsonNode> jsonNodesItems = this.receiptData.getJsonNodeItems();
-        ArrayList<String[]> arrayList = new ArrayList<>();
-        int j = 1;
-        for (JsonNode jsonNodesItem : jsonNodesItems) {
-            String[] s = new String[4];
-            s[0] = jsonNodesItem.get("name").asText().replaceFirst("([0-9:*]+)", j+". ");
-            s[1] = String.valueOf((jsonNodesItem.get("price").asDouble() / 100));
-            s[2] = jsonNodesItem.get("quantity").asText();
-            s[3] = String.valueOf((jsonNodesItem.get("sum").asDouble() / 100));
-            arrayList.add(s);
-            j++;
+        // чек на сумму:
+        double sum = this.receiptData.data.get("totalSum").asDouble()/100;
+        // дата добавления чека в бд
+        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+        Date currentDate = new Date();
+        // дата покупки
+        String ticketDate = this.receiptData.data.get("dateTime").asText();
+
+        Firestore db = FirestoreDB.getInstance().db;
+        DocumentReference receipt = db.collection("users").document(chatId).collection("receipts").document();
+        Map<String, Object> receiptData = new HashMap<>();
+        receiptData.put("added", dateFormat.format(currentDate));
+        receiptData.put("ticket data", ticketDate
+                .replaceAll("([-])", "/").replaceAll("([T])", " "));
+        receiptData.put("sum", sum);
+        receiptData.put("QR-code", "QR-code");
+        // удален файл из базы или нет
+        receiptData.put("deleted", false);
+        receipt.set(receiptData);
+
+
+        CollectionReference goods = receipt.collection("goods");
+        List<JsonNode> jsonNodesGoods = this.receiptData.getJsonNodeItems();
+        for (JsonNode jsonNodesGood : jsonNodesGoods)
+        {
+            DocumentReference good = goods.document(jsonNodesGood.get("name").asText().replaceFirst("([0-9:*]+)", ""));
+            Map<String, Object> goodData = new HashMap<>();
+            goodData.put("price", jsonNodesGood.get("price").asDouble() / 100);
+            goodData.put("quantity", jsonNodesGood.get("quantity").asDouble());
+            goodData.put("owner", "owner");
+            good.set(goodData);
         }
-        return arrayList;
     }
+
+    public void deleteReceipt(Object addDate, DocumentReference documentReference){
+        // ...
+        // ...
+        }
+
+    public void getReceiptInfo(DocumentReference documentReference){
+        // ...
+        // ...
+    }
+
+    public Double divideBetweenUsers(){
+        // ...
+        // ...
+        return null;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 }

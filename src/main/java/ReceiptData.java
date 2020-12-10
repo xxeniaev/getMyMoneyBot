@@ -1,5 +1,7 @@
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.cloud.firestore.DocumentReference;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;

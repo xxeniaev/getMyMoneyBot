@@ -1,18 +1,31 @@
-import com.google.zxing.qrcode.decoder.Mode;
+import com.google.cloud.firestore.DocumentReference;
+import com.google.cloud.firestore.Firestore;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Commands {
     public ModelBot modelBot;
 
     public Commands(ModelBot modelBot) {this.modelBot = modelBot;}
-    public static void signUp(ModelBot modelBot, DataCommand dataCommand) {
+    public static void signUp(ModelBot modelBot, DataCommand dataCommand)
+    {
         /* тута я получаю ник и id для последующего записывания в базу,
         * если это необходимо */
         String username = dataCommand.getUsername();
-        Long chatId = dataCommand.getChatID();
+        String chatId = dataCommand.getChatID().toString();
+
+        Firestore db = FirestoreDB.getInstance().db;
+
+        DocumentReference docRef = db.collection("users").document(chatId);
+        Map<String, Object> data = new HashMap<>();
+        data.put("username", username);
+        docRef.set(data);
+        //asynchronously write data
+        // ApiFuture<WriteResult> result = docRef.set(data);
     }
 
     public static void viewReceipts(ModelBot modelBot, DataCommand dataCommand) {
@@ -29,7 +42,7 @@ public class Commands {
     public static void addReceipt(ModelBot modelBot, DataCommand dataCommand) {
         String linkPhoto = dataCommand.getTextMessage();
         System.out.println(linkPhoto);
-        QRParamsReader qrParamsReader = null;
+        QRParamsReader qrParamsReader;
         try {
             qrParamsReader = new QRParamsReader(linkPhoto);
         } catch (FileNotFoundException | UnsupportedEncodingException e) {
@@ -46,16 +59,21 @@ public class Commands {
         } catch (IOException | InterruptedException e) {
             e.printStackTrace();
             modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
-            return;
         }
     }
 
-    public static void addBaseData(ModelBot modelBot, DataCommand dataCommand)
+    public static void addDataBase(ModelBot modelBot, DataCommand dataCommand)
     {
         if (!dataCommand.getTextMessage().equals("Да")) {
             modelBot.setCurrentStateUser(dataCommand.getChatID(), State.FAIL_CHECK_RECEIPT);
-            return;
         }
+        else {
+            System.out.print(dataCommand.getChatID().toString()+"\n");
+//            System.out.print(modelBot.getUserReceipt(dataCommand.getChatID()).createReceiptForUser()+"\n");
+            Receipt receipt = modelBot.getUserReceipt(dataCommand.getChatID());
+            receipt.receiptToDatabase(dataCommand.getChatID().toString());
+        }
+
         // а тута всё, можно метод для базы данных
         /* modelBot.getUserReceipt(dataCommand.getChatID()); - обращение
         к словарю, который содержит чек.
