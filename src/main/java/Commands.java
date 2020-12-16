@@ -1,11 +1,14 @@
-import com.google.cloud.firestore.DocumentReference;
-import com.google.cloud.firestore.Firestore;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.*;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.HashMap;
-import java.util.Map;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 public class Commands {
     public ModelBot modelBot;
@@ -23,6 +26,7 @@ public class Commands {
         DocumentReference docRef = db.collection("users").document(chatId);
         Map<String, Object> data = new HashMap<>();
         data.put("username", username);
+        data.put("chatID", chatId);
         docRef.set(data);
         //asynchronously write data
         // ApiFuture<WriteResult> result = docRef.set(data);
@@ -89,29 +93,73 @@ public class Commands {
     {
         if (dataCommand.getTextMessage().equals("Нет")) {
             modelBot.setCurrentStateUser(dataCommand.getChatID(), State.NO_CHECK_SHARE);
-            return;
         }
         else if (!dataCommand.getTextMessage().equals("Да"))
         {
             modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
-            return;
         }
     }
 
     public static void shareReceipt(ModelBot modelBot, DataCommand dataCommand)
     {
-        if (isStringCorrect(dataCommand.getTextMessage()))
-        {
-            //тут метод деление чека
+        parseDebtorsString(dataCommand.getTextMessage());
+        Firestore db = FirestoreDB.getInstance().db;
+        CollectionReference users_db = db.collection("users");
+
+        // get user
+        Long user = dataCommand.getChatID();
+
+        // get debtors
+        ArrayList<String> debtors = new ArrayList<>();
+        String[] debtors_usernames = parseDebtorsString(dataCommand.getTextMessage());
+        QuerySnapshot querySnapshot = null;
+        try {
+            querySnapshot = users_db.get().get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
         }
-        else
-            modelBot.setCurrentStateUser(dataCommand.getChatID(), State.INCORRECT_USERNAMES);
+        assert querySnapshot != null;
+        List<QueryDocumentSnapshot> documents = querySnapshot.getDocuments();
+        for (String debtor_username : debtors_usernames) {
+            for (QueryDocumentSnapshot document : documents)
+            {
+                if (Objects.equals(document.getString("username"), debtor_username))
+                {
+                    debtors.add(document.getId());
+                }
+            }
+        }
+        System.out.println("debtors: " + debtors);
+
+        String receiptId = null;
+        String addition_date = modelBot.getUserReceipt(user).addition_date;
+
+        // get receiptID
+        QuerySnapshot querySnapshot1 = null;
+        try {
+            querySnapshot1 = users_db.document(user.toString()).collection("receipts").get().get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        assert querySnapshot1 != null;
+        List<QueryDocumentSnapshot> documents1 = querySnapshot1.getDocuments();
+
+        for (QueryDocumentSnapshot document1 : documents1) {
+            if (Objects.equals(document1.getString("added"), addition_date)){
+                receiptId = document1.getId();
+            }
+        }
+        System.out.println("receiptID: " + receiptId);
+
+        for (String debtor : debtors) {
+            Debt debt = new Debt(debtor, user.toString(), receiptId, documents1.size());
+            debt.debtToDatabase();
+        }
     }
 
-    private static boolean isStringCorrect(String string)
+    private static String[] parseDebtorsString(String string)
     {
-        String[] usernames = string.replaceAll("[@ ]", "").split(",");
         //тут должна быть проверка ника в бд
-        return true;
+        return string.replaceAll("@", "").split(" ");
     }
 }
