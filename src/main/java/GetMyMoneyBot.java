@@ -83,6 +83,14 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         }
     }
 
+    private void sendMessage(Long[] chats_id, String[] messages_text) {
+        if (chats_id.length != messages_text.length)
+            throw new IllegalArgumentException("неправильные аргументы");
+        for(int i = 0; i < chats_id.length; i++) {
+            sendMessage(chats_id[i], messages_text[i]);
+        }
+    }
+
     private void sendMessage(Long chat_id, String message_text) {
         SendMessage message = new SendMessage() // Create a message object object
                 .setChatId(chat_id)
@@ -131,6 +139,11 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             e.printStackTrace();
         }
         return prop.getProperty("botToken");
+    }
+
+    @Override
+    public void sendNotification(Long[] chats_id, String[] messages) {
+        this.sendMessage(chats_id, messages);
     }
 
     public void modelIsChange(Long chatId) {

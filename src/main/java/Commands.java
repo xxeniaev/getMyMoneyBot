@@ -151,10 +151,22 @@ public class Commands {
         }
         System.out.println("receiptID: " + receiptId);
 
+        String[] debt_text = new String[debtors.size()];
+        int i = 0;
+        Long[] ids = new Long[debtors.size()];
+
         for (String debtor : debtors) {
-            Debt debt = new Debt(debtor, user.toString(), receiptId, documents1.size());
+            Debt debt = new Debt(debtor, user.toString(), receiptId, debtors.size());
+            ids[i] = Long.parseLong(debt.debtor);
+            debt_text[i] = "\u2757\ufe0f" +
+                    " Привет-велосипед \u2757\ufe0f\n" +
+                    "Время платить по долгам\n\ud83d\udd2a Ты должен " + debt.sum + " \ud83d\udd2a\n" +
+                    "С любовью, Ваш покорный слуга @" + dataCommand.getUsername() ;
             debt.debtToDatabase();
+            i++;
         }
+        modelBot.sendNotificication(ids, debt_text);
+
     }
 
     private static String[] parseDebtorsString(String string)

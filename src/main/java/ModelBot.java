@@ -37,6 +37,12 @@ public class ModelBot{
         }
     }
 
+    public void sendNotificication(Long[] chatsId, String[] messages) {
+        for (IObserver observer: observers) {
+            observer.sendNotification(chatsId, messages);
+        }
+    }
+
     public State getLastCurrentStateUser(Long userId)
     {
         if (!usersStates.containsKey(userId))
