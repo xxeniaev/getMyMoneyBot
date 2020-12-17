@@ -105,6 +105,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         } catch (TelegramApiException e) {
             e.printStackTrace();
         }
+        assert file != null;
         return "https://api.telegram.org/file/bot" + this.getBotToken() +
                 "/"+file.getFilePath();
     }
@@ -155,8 +156,8 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         String text_fail_check_receipt = "Нет? Видимо что-то пошло не так. Попробуем снова!!!";
         String text_no_share = "Самостоятельный, да? Что будем делать дальше?";
         String text_send_friends = "Отправь нам usernames твоих компаньонов. " +
-                "Отправляй username через запятую.\n" +
-                "Пример: @xxxeny, @donilg\n" +
+                "Отправляй username через пробел.\n" +
+                "Пример: @xxxeny @donilg\n" +
                 "Также учти, что твои друзья должны быть подписаны на этого бота.";
         this.answersForStates.put(State.SIGN_UP, text_sign);
         this.answersForStates.put(State.PRESS_ADD_RECEIPT, text_wait);

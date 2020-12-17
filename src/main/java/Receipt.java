@@ -11,6 +11,10 @@ public class Receipt{
     private final IExtractable extractor;
     private IParamable params;
     public ReceiptData receiptData;
+    // дата добавления чека в бд
+    private DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
+    private Date currentDate = new Date();
+    public String addition_date = dateFormat.format(currentDate);
 
 
     public Receipt(IExtractable ex, IParamable params) throws IOException, InterruptedException {
@@ -45,17 +49,14 @@ public class Receipt{
     {
         // чек на сумму:
         double sum = this.receiptData.data.get("totalSum").asDouble()/100;
-        // дата добавления чека в бд
-        DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
-        Date currentDate = new Date();
         // дата покупки
         String ticketDate = this.receiptData.data.get("dateTime").asText();
 
         Firestore db = FirestoreDB.getInstance().db;
         DocumentReference receipt = db.collection("users").document(chatId).collection("receipts").document();
         Map<String, Object> receiptData = new HashMap<>();
-        receiptData.put("added", dateFormat.format(currentDate));
-        receiptData.put("ticket data", ticketDate
+        receiptData.put("added", this.addition_date);
+        receiptData.put("ticket date", ticketDate
                 .replaceAll("([-])", "/").replaceAll("([T])", " "));
         receiptData.put("sum", sum);
         receiptData.put("QR-code", "QR-code");
@@ -68,7 +69,8 @@ public class Receipt{
         List<JsonNode> jsonNodesGoods = this.receiptData.getJsonNodeItems();
         for (JsonNode jsonNodesGood : jsonNodesGoods)
         {
-            DocumentReference good = goods.document(jsonNodesGood.get("name").asText().replaceFirst("([0-9:*]+)", ""));
+            DocumentReference good = goods.document(jsonNodesGood.get("name").asText().
+                    replaceFirst("([0-9:*]+)", ""));
             Map<String, Object> goodData = new HashMap<>();
             goodData.put("price", jsonNodesGood.get("price").asDouble() / 100);
             goodData.put("quantity", jsonNodesGood.get("quantity").asDouble());
