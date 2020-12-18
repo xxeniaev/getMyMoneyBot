@@ -1,5 +1,4 @@
 import com.fasterxml.jackson.databind.JsonNode;
-import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 
 import java.io.IOException;
@@ -52,7 +51,7 @@ public class Receipt{
             j++;
         }
         s.append("------------------------------------\n").append("Итог: ")
-                .append(this.receiptData.data.get("totalSum").asDouble()/100).append(" рублей");
+                .append(this.receiptData.data.get("totalSum").asDouble()/100).append(" руб.");
         return s.toString();
     }
 
@@ -92,38 +91,35 @@ public class Receipt{
         this.setReceiptId(receipt.getId());
     }
 
-    public void addParticipants(String chatId, String[] debtors_usernames){
-        ArrayList<String> debtors = getDebtors(debtors_usernames);
+    public void addParticipants(String chatId, ArrayList<String> debtorsUsernames){
         Firestore db = FirestoreDB.getInstance().db;
         DocumentReference participants = db.collection("users").document(chatId).collection("receipts")
                 .document(this.receiptId);
         Map<String, Object> updateReceiptData = new HashMap<>();
-        updateReceiptData.put("participants", debtors);
+        updateReceiptData.put("participants", debtorsUsernames);
         participants.set(updateReceiptData, SetOptions.merge());
     }
 
-    public ArrayList<String> getDebtors(String[] debtors_usernames){
+    public ArrayList<String> getDebtorsIds(ArrayList<String> debtorsUsernames){
         Firestore db = FirestoreDB.getInstance().db;
-        ArrayList<String> debtors = new ArrayList<String>();
-        QuerySnapshot querySnapshotUsers = null;
+        ArrayList<String> debtorsIds = new ArrayList<>();
+        List<QueryDocumentSnapshot> documents = null;
         try {
-            querySnapshotUsers = db.collection("users").get().get();
+            documents = db.collection("users").get().get().getDocuments();
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
-        assert querySnapshotUsers != null;
-        List<QueryDocumentSnapshot> documents = querySnapshotUsers.getDocuments();
-        for (String debtor_username : debtors_usernames) {
+        for (String debtorUsername : debtorsUsernames) {
             for (QueryDocumentSnapshot document : documents)
             {
-                if (Objects.equals(document.getString("username"), debtor_username))
+                if (Objects.equals(document.getString("username"), debtorUsername))
                 {
-                    debtors.add(document.getId());
+                    debtorsIds.add(document.getId());
                 }
             }
         }
-        System.out.println("debtors: " + debtors);
-        return debtors;
+        System.out.println("debtors: " + debtorsIds);
+        return debtorsIds;
     }
 
     public BigDecimal divideSum(String user, int usersQuantity)
@@ -138,18 +134,18 @@ public class Receipt{
         }
 
         assert documentSnapshot != null;
-        BigDecimal debt = new BigDecimal(documentSnapshot.getDouble("sum")/(usersQuantity+1))
+        BigDecimal debt = BigDecimal.valueOf(documentSnapshot.getDouble("sum") / (usersQuantity + 1))
                 .setScale(2, ROUND_HALF_UP);
         System.out.println(debt);
         return debt;
     }
 
-    public void deleteReceipt(String receiptId){
+    private void deleteReceipt(String receiptId){
         // ...
         // ...
         }
 
-    public void cancelReceipt(String receiptId){
+    private void cancelReceipt(String receiptId){
         // ...
         // ...
     }
