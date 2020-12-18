@@ -3,10 +3,13 @@ import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+
+import static java.math.BigDecimal.ROUND_HALF_UP;
 
 public class Receipt{
     private final IExtractable extractor;
@@ -123,7 +126,7 @@ public class Receipt{
         return debtors;
     }
 
-    public double divideSum(String user, int usersQuantity)
+    public BigDecimal divideSum(String user, int usersQuantity)
     {
         Firestore db = FirestoreDB.getInstance().db;
         DocumentSnapshot documentSnapshot = null;
@@ -135,15 +138,21 @@ public class Receipt{
         }
 
         assert documentSnapshot != null;
-        double debt = documentSnapshot.getDouble("sum")/(usersQuantity+1);
+        BigDecimal debt = new BigDecimal(documentSnapshot.getDouble("sum")/(usersQuantity+1))
+                .setScale(2, ROUND_HALF_UP);
         System.out.println(debt);
         return debt;
     }
 
-    public void deleteReceipt(Object addDate, DocumentReference documentReference){
+    public void deleteReceipt(String receiptId){
         // ...
         // ...
         }
+
+    public void cancelReceipt(String receiptId){
+        // ...
+        // ...
+    }
 
 
 

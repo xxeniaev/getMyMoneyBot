@@ -5,6 +5,7 @@ import com.google.cloud.firestore.*;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -117,11 +118,11 @@ public class Commands {
 
         // for every debtor
         for (String debtor : debtors) {
-            double sum = currentReceipt.divideSum(user.toString(), debtors.size());
+            BigDecimal sum = currentReceipt.divideSum(user.toString(), debtors.size());
             ids[i] = Long.parseLong(debtor);
             debt_text[i] = "\u2757\ufe0f" +
                     " Привет-велосипед \u2757\ufe0f\n" +
-                    "Время платить по долгам\n\ud83d\udd2a Ты должен " + sum + " \ud83d\udd2a\n" +
+                    "Время платить по долгам\n\ud83d\udd2a Ты должен " + sum + " рублей \ud83d\udd2a\n" +
                     "С любовью, Ваш покорный слуга @" + dataCommand.getUsername() ;
             i++;
 
