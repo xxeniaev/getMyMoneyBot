@@ -37,7 +37,7 @@ public class ModelBot{
         }
     }
 
-    public void sendNotificication(Long[] chatsId, String[] messages) {
+    public void sendNotification(Long[] chatsId, String[] messages) {
         for (IObserver observer: observers) {
             observer.sendNotification(chatsId, messages);
         }

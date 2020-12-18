@@ -73,7 +73,6 @@ public class Commands {
         }
         else {
             System.out.print(dataCommand.getChatID().toString()+"\n");
-//            System.out.print(modelBot.getUserReceipt(dataCommand.getChatID()).createReceiptForUser()+"\n");
             Receipt receipt = modelBot.getUserReceipt(dataCommand.getChatID());
             receipt.receiptToDatabase(dataCommand.getChatID().toString());
         }
@@ -102,70 +101,32 @@ public class Commands {
 
     public static void shareReceipt(ModelBot modelBot, DataCommand dataCommand)
     {
-        parseDebtorsString(dataCommand.getTextMessage());
-        Firestore db = FirestoreDB.getInstance().db;
-        CollectionReference users_db = db.collection("users");
-
-        // get user
         Long user = dataCommand.getChatID();
+        Receipt currentReceipt = modelBot.getUserReceipt(user);
 
-        // get debtors
-        ArrayList<String> debtors = new ArrayList<>();
+        // получаю юзернеймы должников
         String[] debtors_usernames = parseDebtorsString(dataCommand.getTextMessage());
-        QuerySnapshot querySnapshot = null;
-        try {
-            querySnapshot = users_db.get().get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
-        assert querySnapshot != null;
-        List<QueryDocumentSnapshot> documents = querySnapshot.getDocuments();
-        for (String debtor_username : debtors_usernames) {
-            for (QueryDocumentSnapshot document : documents)
-            {
-                if (Objects.equals(document.getString("username"), debtor_username))
-                {
-                    debtors.add(document.getId());
-                }
-            }
-        }
-        System.out.println("debtors: " + debtors);
 
-        String receiptId = null;
-        String addition_date = modelBot.getUserReceipt(user).addition_date;
-
-        // get receiptID
-        QuerySnapshot querySnapshot1 = null;
-        try {
-            querySnapshot1 = users_db.document(user.toString()).collection("receipts").get().get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
-        assert querySnapshot1 != null;
-        List<QueryDocumentSnapshot> documents1 = querySnapshot1.getDocuments();
-
-        for (QueryDocumentSnapshot document1 : documents1) {
-            if (Objects.equals(document1.getString("added"), addition_date)){
-                receiptId = document1.getId();
-            }
-        }
-        System.out.println("receiptID: " + receiptId);
+        // добваляю учаников в чек
+        currentReceipt.addParticipants(user.toString(), debtors_usernames);
+        ArrayList<String> debtors =currentReceipt.getDebtors(debtors_usernames);
 
         String[] debt_text = new String[debtors.size()];
         int i = 0;
         Long[] ids = new Long[debtors.size()];
 
+        // for every debtor
         for (String debtor : debtors) {
-            Debt debt = new Debt(debtor, user.toString(), receiptId, debtors.size());
-            ids[i] = Long.parseLong(debt.debtor);
+            double sum = currentReceipt.divideSum(user.toString(), debtors.size());
+            ids[i] = Long.parseLong(debtor);
             debt_text[i] = "\u2757\ufe0f" +
                     " Привет-велосипед \u2757\ufe0f\n" +
-                    "Время платить по долгам\n\ud83d\udd2a Ты должен " + debt.sum + " \ud83d\udd2a\n" +
+                    "Время платить по долгам\n\ud83d\udd2a Ты должен " + sum + " \ud83d\udd2a\n" +
                     "С любовью, Ваш покорный слуга @" + dataCommand.getUsername() ;
-            debt.debtToDatabase();
             i++;
+
         }
-        modelBot.sendNotificication(ids, debt_text);
+        modelBot.sendNotification(ids, debt_text);
 
     }
 

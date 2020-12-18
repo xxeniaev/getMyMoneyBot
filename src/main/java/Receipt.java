@@ -6,21 +6,29 @@ import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
 
 public class Receipt{
     private final IExtractable extractor;
-    private IParamable params;
+    private  IParamable params;
     public ReceiptData receiptData;
+
     // дата добавления чека в бд
     private DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private Date currentDate = new Date();
-    public String addition_date = dateFormat.format(currentDate);
+    private String addition_date = dateFormat.format(currentDate);
+
+    public String receiptId;
 
 
     public Receipt(IExtractable ex, IParamable params) throws IOException, InterruptedException {
         this.extractor = ex;
         this.params = params;
         this.receiptData = extractor.getDetails(params.getParams());
+    }
+
+    private void setReceiptId(String receiptId){
+        this.receiptId = receiptId;
     }
 
     public String createReceiptForUser() {
@@ -60,10 +68,11 @@ public class Receipt{
                 .replaceAll("([-])", "/").replaceAll("([T])", " "));
         receiptData.put("sum", sum);
         receiptData.put("QR-code", "QR-code");
-        // удален файл из базы или нет
+        // удален чек из базы или нет
         receiptData.put("deleted", false);
+        // погашен чек или нет
+        receiptData.put("canceled", false);
         receipt.set(receiptData);
-
 
         CollectionReference goods = receipt.collection("goods");
         List<JsonNode> jsonNodesGoods = this.receiptData.getJsonNodeItems();
@@ -77,6 +86,58 @@ public class Receipt{
             goodData.put("owner", "owner");
             good.set(goodData);
         }
+        this.setReceiptId(receipt.getId());
+    }
+
+    public void addParticipants(String chatId, String[] debtors_usernames){
+        ArrayList<String> debtors = getDebtors(debtors_usernames);
+        Firestore db = FirestoreDB.getInstance().db;
+        DocumentReference participants = db.collection("users").document(chatId).collection("receipts")
+                .document(this.receiptId);
+        Map<String, Object> updateReceiptData = new HashMap<>();
+        updateReceiptData.put("participants", debtors);
+        participants.set(updateReceiptData, SetOptions.merge());
+    }
+
+    public ArrayList<String> getDebtors(String[] debtors_usernames){
+        Firestore db = FirestoreDB.getInstance().db;
+        ArrayList<String> debtors = new ArrayList<String>();
+        QuerySnapshot querySnapshotUsers = null;
+        try {
+            querySnapshotUsers = db.collection("users").get().get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        assert querySnapshotUsers != null;
+        List<QueryDocumentSnapshot> documents = querySnapshotUsers.getDocuments();
+        for (String debtor_username : debtors_usernames) {
+            for (QueryDocumentSnapshot document : documents)
+            {
+                if (Objects.equals(document.getString("username"), debtor_username))
+                {
+                    debtors.add(document.getId());
+                }
+            }
+        }
+        System.out.println("debtors: " + debtors);
+        return debtors;
+    }
+
+    public double divideSum(String user, int usersQuantity)
+    {
+        Firestore db = FirestoreDB.getInstance().db;
+        DocumentSnapshot documentSnapshot = null;
+        try {
+            documentSnapshot = db.collection("users").document(user).collection("receipts")
+                    .document(this.receiptId).get().get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+
+        assert documentSnapshot != null;
+        double debt = documentSnapshot.getDouble("sum")/(usersQuantity+1);
+        System.out.println(debt);
+        return debt;
     }
 
     public void deleteReceipt(Object addDate, DocumentReference documentReference){
@@ -84,16 +145,6 @@ public class Receipt{
         // ...
         }
 
-    public void getReceiptInfo(DocumentReference documentReference){
-        // ...
-        // ...
-    }
-
-    public Double divideBetweenUsers(){
-        // ...
-        // ...
-        return null;
-    }
 
 
 
