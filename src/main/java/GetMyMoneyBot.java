@@ -43,7 +43,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     private void actionCommand(Message message, Long chatId, State lastState)
     {
         if (message.isCommand()) {
-            this.modelBot.setCurrentStateUser(chatId, this.modelBot.getBotStateMap(message.getText()));
+            this.modelBot.setCurrentStateUser(chatId, this.modelBot.getBotStateMap(message.getText(), lastState));
             System.out.println("1 " + this.modelBot.getCurrentStateUser(chatId));
         }
         else if (lastState != State.WAIT_PHOTO && lastState != State.WAIT_CHECK_RECEIPT
@@ -172,6 +172,10 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
                 "Отправляй username через пробел.\n" +
                 "Пример: @xxxeny @donilg\n" +
                 "Также учти, что твои друзья должны быть подписаны на этого бота.";
+        String text_incorrect_users = "Мы не нашли твоих друзей в базе данных.\n" +
+                "У нас есть два варианта: либо ты неправильно написал их usernames, " +
+                "либо они не подписаны на нашего бота.\n" +
+                "Проверь, пожалуйста, ещё раз.";
         this.answersForStates.put(State.SIGN_UP, text_sign);
         this.answersForStates.put(State.PRESS_ADD_RECEIPT, text_wait);
         this.answersForStates.put(State.FAIL_CHECK_RECEIPT, text_fail_check_receipt);
@@ -181,5 +185,6 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         this.answersForStates.put(State.VIEW_AUTHORS, text_authors);
         this.answersForStates.put(State.WAIT_CHECK_SHARE, text_wait_share);
         this.answersForStates.put(State.NO_CHECK_SHARE, text_no_share);
+        this.answersForStates.put(State.INCORRECT_USERNAMES, text_incorrect_users);
     }
 }
