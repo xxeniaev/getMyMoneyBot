@@ -32,18 +32,10 @@ public class Commands {
 
     public static void viewReceipts(ModelBot modelBot, DataCommand dataCommand) {
         Firestore db = FirestoreDB.getInstance().db;
-        ArrayList<Receipt> myReceipts = new ArrayList<>();
         CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
                 .collection("receipts");
-        ApiFuture<QuerySnapshot> future = receipts.get();
-        QuerySnapshot querySnapshotReceipts = null;
-        try {
-            querySnapshotReceipts = future.get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
-        List<QueryDocumentSnapshot> receiptsDocuments = querySnapshotReceipts.getDocuments();
 
+        List<QueryDocumentSnapshot> receiptsDocuments = getReceiptsDocuments(receipts);
         // составлять сообщение с юзера
         // сделать, чтобы чеки выводились сортированно по  датам, а не рандомно
         StringBuilder s = new StringBuilder();
@@ -51,12 +43,48 @@ public class Commands {
         int i = 0;
         for (QueryDocumentSnapshot receiptDocument: receiptsDocuments){
             s.append("/").append(i).append(" ");
-            String date = receiptDocument.getString("ticket date");
+            String date = receiptDocument.getString("added");
             s.append(date).append("\n");
             i++;
         }
-        // ...
-        // ...
+        modelBot.setBufferAnswer(s.toString());
+
+    }
+
+    private static List<QueryDocumentSnapshot> getReceiptsDocuments(CollectionReference receipts)
+    {
+        QuerySnapshot future = null;
+        try {
+            future = receipts.get().get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        return future.getDocuments();
+    }
+
+    public static void viewSpecificReceipt(ModelBot modelBot, DataCommand dataCommand)
+    {
+        StringBuilder text = new StringBuilder();
+        StringBuilder s = new StringBuilder(dataCommand.getTextMessage()).deleteCharAt(0);
+        int position = Integer.parseInt(s.toString());
+
+        Firestore db = FirestoreDB.getInstance().db;
+        CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
+                .collection("receipts");
+        QueryDocumentSnapshot receiptDocument = getReceiptsDocuments(receipts).get(position);
+
+        CollectionReference goods = receipts.document(receiptDocument.getId()).collection("goods");
+
+        List<QueryDocumentSnapshot> goodsDocuments = getReceiptsDocuments(goods);
+        text.append("чек №").append(position).append("\n");
+        text.append("дата добавления чека: ").append(receiptDocument.getString("added")).append("\n").append("\n");
+        int i = 1;
+        for (QueryDocumentSnapshot good: goodsDocuments
+             ) {
+            text.append(i).append(". ").append(good.getId()).append(" - ").append(good.getDouble("price")).append("\n");
+            i++;
+        }
+        modelBot.setBufferAnswer(text.toString());
 
     }
 
@@ -129,9 +157,14 @@ public class Commands {
         // получаю юзернеймы должников
         ArrayList<String> debtorsUsernames = parseDebtorsString(dataCommand.getTextMessage());
 
+        if (!checkIfAllUsersExist(debtorsUsernames, modelBot.getUserReceipt(dataCommand.getChatID()))) {
+            modelBot.setCurrentStateUser(dataCommand.getChatID(), State.INCORRECT_USERNAMES);
+            return;
+        }
+
         // добавляю участников в чек
         currentReceipt.addParticipants(user.toString(), debtorsUsernames);
-        ArrayList<String> debtors =currentReceipt.getDebtorsIds(debtorsUsernames);
+        ArrayList<String> debtors = currentReceipt.getDebtorsIds(debtorsUsernames);
 
         String[] debt_text = new String[debtors.size()];
         int i = 0;
@@ -159,12 +192,11 @@ public class Commands {
                 .split(" ")));
     }
 
-    private static boolean checkIfAllUsersExist(String string, Receipt receipt)
+    private static boolean checkIfAllUsersExist(ArrayList<String> usernames, Receipt receipt)
     {
         // проверяет все ли пользователи есть в бд
-        ArrayList<String> debtorsUsernames = parseDebtorsString(string);
-        ArrayList<String> debtorsIds = receipt.getDebtorsIds(debtorsUsernames);
-        return debtorsUsernames.size() <= debtorsIds.size();
+        ArrayList<String> debtorsIds = receipt.getDebtorsIds(usernames);
+        return usernames.size() == debtorsIds.size();
     }
 
 //    private static boolean checkIfUserExists(String debtorUsername){

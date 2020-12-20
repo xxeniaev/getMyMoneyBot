@@ -2,10 +2,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class ModelBot{
     public ArrayList<IObserver> observers;
     private final HashMap<String, State> botStateMap;
+    private final HashMap<String, State> botStateViewReceiptMap;
     private ConcurrentHashMap<Long, State> usersStates;
     private ConcurrentHashMap<Long, Boolean> usersFault;
     private HashMap<Long, Receipt> usersReceipt;
@@ -21,6 +24,8 @@ public class ModelBot{
         this.usersReceipt = new HashMap<Long, Receipt>();
         this.botStateMap = new HashMap<String, State>();
         initializationStateBotMap(this.botStateMap);
+        this.botStateViewReceiptMap = new HashMap<String, State>();
+        initializationViewReceiptStateBotMap(this.botStateViewReceiptMap);
         this.stateFunctionHashMap = new HashMap<State, BiConsumer<ModelBot, DataCommand>>();
         initializationStateFunctionMap(stateFunctionHashMap);
         this.stateAfterFunction =  new HashMap<State, State[]>();
@@ -62,11 +67,19 @@ public class ModelBot{
     }
 
     public void setCurrentStateUser(Long chatId, State state) {
+        if (state == null)
+            return;
         this.usersStates.replace(chatId, state);
         this.notifyObservers(chatId);
     }
 
-    public State getBotStateMap(String command) {
+    public State getBotStateMap(String command, State state) {
+        if (state == State.WAIT_SELECT_RECEIPT) {
+            Pattern pattern = Pattern.compile("^/\\d+?$");
+            Matcher matcher = pattern.matcher(command);
+            if (matcher.find())
+                return botStateViewReceiptMap.get("/view_specific_receipt");
+        }
         return botStateMap.get(command);
     }
 
@@ -119,6 +132,10 @@ public class ModelBot{
         botStates.put("/authors", State.VIEW_AUTHORS);
     }
 
+    private void initializationViewReceiptStateBotMap(HashMap<String, State> botStates) {
+        botStates.put("/view_specific_receipt", State.VIEW_SPECIFIC_RECEIPT);
+    }
+
     private void initializationStateFunctionMap(HashMap<State, BiConsumer<ModelBot, DataCommand>> hm)
     {
         hm.put(State.SIGN_UP, Commands::signUp);
@@ -128,6 +145,7 @@ public class ModelBot{
         hm.put(State.WAIT_CHECK_RECEIPT, Commands::addDataBase);
         hm.put(State.WAIT_CHECK_SHARE, Commands::areThereFriends);
         hm.put(State.WAIT_USERNAMES_FRIENDS, Commands::shareReceipt);
+        hm.put(State.VIEW_SPECIFIC_RECEIPT, Commands::viewSpecificReceipt);
     }
 
     private void initializationStateAfterFunction(HashMap<State, State[]> hm)
@@ -142,7 +160,8 @@ public class ModelBot{
         hm.put(State.WAIT_USERNAMES_FRIENDS, new State[]{State.NOTIFY_MADE_RECEIPT, State.CHOOSE_COMMAND});
         hm.put(State.INCORRECT_USERNAMES, new State[]{State.WAIT_USERNAMES_FRIENDS});
         hm.put(State.VIEW_STATISTIC, new State[]{State.CHOOSE_COMMAND});
-        hm.put(State.VIEW_RECEIPTS, new State[]{State.CHOOSE_COMMAND});
+        hm.put(State.VIEW_RECEIPTS, new State[]{State.WAIT_SELECT_RECEIPT});
+        hm.put(State.VIEW_SPECIFIC_RECEIPT, new State[]{State.WAIT_SELECT_RECEIPT});
         hm.put(State.VIEW_AUTHORS, new State[]{State.CHOOSE_COMMAND});
     }
 }
