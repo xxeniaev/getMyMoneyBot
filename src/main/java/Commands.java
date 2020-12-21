@@ -39,11 +39,11 @@ public class Commands {
         // составлять сообщение с юзера
         // сделать, чтобы чеки выводились сортированно по  датам, а не рандомно
         StringBuilder s = new StringBuilder();
-        s.append("Вот твои чеки, пользуйся\u2665\ufe0f\n\n");
-        int i = 0;
+        s.append("Вот твои чеки, пользуйся :)\n\n");
+        int i = 1;
         for (QueryDocumentSnapshot receiptDocument: receiptsDocuments){
-            s.append("/").append(i).append(" ");
-            String date = receiptDocument.getString("added");
+            s.append("\u25aa\ufe0fЧек ").append("/").append(i).append(" от ");
+            String date = receiptDocument.getString("added").split(" ")[0];
             s.append(date).append("\n");
             i++;
         }
@@ -76,12 +76,13 @@ public class Commands {
         CollectionReference goods = receipts.document(receiptDocument.getId()).collection("goods");
 
         List<QueryDocumentSnapshot> goodsDocuments = getReceiptsDocuments(goods);
-        text.append("чек №").append(position).append("\n");
-        text.append("дата добавления чека: ").append(receiptDocument.getString("added")).append("\n").append("\n");
+        text.append("Чек №").append(position).append("\n");
+        String date = receiptDocument.getString("added").split(" ")[0];
+        text.append("Дата добавления чека: ").append(date).append("\n").append("\n");
         int i = 1;
         for (QueryDocumentSnapshot good: goodsDocuments
              ) {
-            text.append(i).append(". ").append(good.getId()).append(" - ").append(good.getDouble("price")).append("\n");
+            text.append(i).append(". ").append(good.getId()).append(".\n").append(good.getDouble("price")*good.getDouble("quantity")).append(" р").append("\n");
             i++;
         }
         modelBot.setBufferAnswer(text.toString());
