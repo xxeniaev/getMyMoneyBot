@@ -7,7 +7,8 @@ import java.util.regex.Pattern;
 
 public class ModelBot{
     public ArrayList<IObserver> observers;
-    private final HashMap<String, State> botStateMap;
+    private final HashMap<String, State> botAllMenuStateMap;
+    private final HashMap<String, State> botOnlyMenuStateMap;
     private final HashMap<String, State> botStateViewReceiptMap;
     private ConcurrentHashMap<Long, State> usersStates;
     private ConcurrentHashMap<Long, Boolean> usersFault;
@@ -22,8 +23,10 @@ public class ModelBot{
         this.usersStates = new ConcurrentHashMap<Long, State>();
         this.usersFault = new ConcurrentHashMap<Long, Boolean>();
         this.usersReceipt = new HashMap<Long, Receipt>();
-        this.botStateMap = new HashMap<String, State>();
-        initializationStateBotMap(this.botStateMap);
+        this.botAllMenuStateMap = new HashMap<String, State>();
+        initializationAllMenuStateBotMap(this.botAllMenuStateMap);
+        this.botOnlyMenuStateMap = new HashMap<String, State>();
+        initializationOnlyMenuStateBotMap(this.botOnlyMenuStateMap);
         this.botStateViewReceiptMap = new HashMap<String, State>();
         initializationViewReceiptStateBotMap(this.botStateViewReceiptMap);
         this.stateFunctionHashMap = new HashMap<State, BiConsumer<ModelBot, DataCommand>>();
@@ -79,8 +82,14 @@ public class ModelBot{
             Matcher matcher = pattern.matcher(command);
             if (matcher.find())
                 return botStateViewReceiptMap.get("/view_specific_receipt");
+            if (command.equals("quench") || command.equals("delete")) {
+                return botStateViewReceiptMap.get(command);
+            }
+            return botOnlyMenuStateMap.get(command);
         }
-        return botStateMap.get(command);
+        else if (state == State.CHOOSE_COMMAND || state == State.NONE)
+            return botAllMenuStateMap.get(command);
+        return botOnlyMenuStateMap.get(command);
     }
 
     public BiConsumer<ModelBot, DataCommand> getStateFunctionHashMap(State state)
@@ -123,17 +132,24 @@ public class ModelBot{
         return answer;
     }
 
-    private void initializationStateBotMap(HashMap<String, State> botStates)
+    private void initializationAllMenuStateBotMap(HashMap<String, State> botStates)
     {
         botStates.put("/start", State.SIGN_UP);
-        botStates.put("/add_receipt", State.PRESS_ADD_RECEIPT);
-        botStates.put("/my_receipts", State.VIEW_RECEIPTS);
-        botStates.put("/my_stats", State.VIEW_STATISTIC);
+        botStates.put("Добавить чек", State.PRESS_ADD_RECEIPT);
+        botStates.put("Мои чеки", State.VIEW_RECEIPTS);
+        botStates.put("Моя статистика", State.VIEW_STATISTIC);
         botStates.put("/authors", State.VIEW_AUTHORS);
+    }
+
+    private void initializationOnlyMenuStateBotMap(HashMap<String, State> botStates)
+    {
+        botStates.put("Меню", State.GO_MENU);
     }
 
     private void initializationViewReceiptStateBotMap(HashMap<String, State> botStates) {
         botStates.put("/view_specific_receipt", State.VIEW_SPECIFIC_RECEIPT);
+        botStates.put("quench", State.QUENCH_SPECIFIC_RECEIPT);
+        botStates.put("delete", State.DELETE_SPECIFIC_RECEIPT);
     }
 
     private void initializationStateFunctionMap(HashMap<State, BiConsumer<ModelBot, DataCommand>> hm)
@@ -146,6 +162,8 @@ public class ModelBot{
         hm.put(State.WAIT_CHECK_SHARE, Commands::areThereFriends);
         hm.put(State.WAIT_USERNAMES_FRIENDS, Commands::shareReceipt);
         hm.put(State.VIEW_SPECIFIC_RECEIPT, Commands::viewSpecificReceipt);
+        hm.put(State.QUENCH_SPECIFIC_RECEIPT, Commands::quenchReceipt);
+        hm.put(State.DELETE_SPECIFIC_RECEIPT, Commands::deleteReceipt);
     }
 
     private void initializationStateAfterFunction(HashMap<State, State[]> hm)
@@ -161,7 +179,11 @@ public class ModelBot{
         hm.put(State.INCORRECT_USERNAMES, new State[]{State.WAIT_USERNAMES_FRIENDS});
         hm.put(State.VIEW_STATISTIC, new State[]{State.CHOOSE_COMMAND});
         hm.put(State.VIEW_RECEIPTS, new State[]{State.WAIT_SELECT_RECEIPT});
-        hm.put(State.VIEW_SPECIFIC_RECEIPT, new State[]{State.WAIT_SELECT_RECEIPT});
+        hm.put(State.VIEW_SPECIFIC_RECEIPT, new State[]{State.GIVE_VIEW_SPECIFIC_RECEIPT,
+                State.WAIT_SELECT_RECEIPT});
+        hm.put(State.DELETE_SPECIFIC_RECEIPT, new State[]{State.WAIT_SELECT_RECEIPT});
+        hm.put(State.QUENCH_SPECIFIC_RECEIPT, new State[]{State.WAIT_SELECT_RECEIPT});
         hm.put(State.VIEW_AUTHORS, new State[]{State.CHOOSE_COMMAND});
+        hm.put(State.GO_MENU, new State[]{State.CHOOSE_COMMAND});
     }
 }
