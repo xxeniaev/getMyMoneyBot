@@ -1,4 +1,5 @@
 import com.google.api.core.ApiFuture;
+import com.google.cloud.Tuple;
 import com.google.cloud.firestore.*;
 
 import java.io.FileNotFoundException;
@@ -7,6 +8,8 @@ import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Commands {
     public ModelBot modelBot;
@@ -66,17 +69,15 @@ public class Commands {
     {
         StringBuilder text = new StringBuilder();
         StringBuilder s = new StringBuilder(dataCommand.getTextMessage()).deleteCharAt(0);
-        int position = Integer.parseInt(s.toString());
-
+        int position = Integer.parseInt(s.toString()) - 1;
         Firestore db = FirestoreDB.getInstance().db;
         CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
                 .collection("receipts");
         QueryDocumentSnapshot receiptDocument = getReceiptsDocuments(receipts).get(position);
-
         CollectionReference goods = receipts.document(receiptDocument.getId()).collection("goods");
 
         List<QueryDocumentSnapshot> goodsDocuments = getReceiptsDocuments(goods);
-        text.append("Чек №").append(position).append("\n");
+        text.append("Чек №").append(position + 1).append("\n");
         String date = receiptDocument.getString("added").split(" ")[0];
         text.append("Дата добавления чека: ").append(date).append("\n").append("\n");
         int i = 1;
@@ -139,6 +140,21 @@ public class Commands {
         3 - сумма*/
     }
 
+    private static QueryDocumentSnapshot getReceiptElement(DataCommand dataCommand)
+    {
+        Pattern pattern = Pattern.compile("Чек №(\\d+?)\\n");
+        Matcher matcher = pattern.matcher(dataCommand.getTextMessage());
+        if (matcher.find()) {
+            int position = Integer.parseInt(matcher.group(1)) - 1;
+            Firestore db = FirestoreDB.getInstance().db;
+            CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
+                    .collection("receipts");
+            QueryDocumentSnapshot receiptDocument = getReceiptsDocuments(receipts).get(position);
+            return receiptDocument;
+        }
+        return null;
+    }
+
     public static void areThereFriends(ModelBot modelBot, DataCommand dataCommand)
     {
         if (dataCommand.getTextMessage().equals("Нет")) {
@@ -148,6 +164,16 @@ public class Commands {
         {
             modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
         }
+    }
+
+    public static void quenchReceipt(ModelBot modelBot, DataCommand dataCommand)
+    {
+        QueryDocumentSnapshot queryDocumentSnapshot = getReceiptElement(dataCommand);
+    }
+
+    public static void deleteReceipt(ModelBot modelBot, DataCommand dataCommand)
+    {
+        QueryDocumentSnapshot queryDocumentSnapshot = getReceiptElement(dataCommand);
     }
 
     public static void shareReceipt(ModelBot modelBot, DataCommand dataCommand)
@@ -168,7 +194,7 @@ public class Commands {
         ArrayList<String> debtors = currentReceipt.getDebtorsIds(debtorsUsernames);
 
         String[] debt_text = new String[debtors.size()];
-        int i = 0;
+        int i = 1;
         Long[] ids = new Long[debtors.size()];
 
         // for every debtor

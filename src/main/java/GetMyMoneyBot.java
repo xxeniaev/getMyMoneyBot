@@ -1,49 +1,136 @@
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.api.objects.File;
-import org.telegram.telegrambots.meta.api.objects.Message;
-import org.telegram.telegrambots.meta.api.objects.PhotoSize;
-import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.api.objects.*;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.InlineKeyboardButton;
+import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
+import java.util.*;
+import java.util.function.BiConsumer;
 
 public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     public ModelBot modelBot;
     private final Map<State, String> answersForStates;
+    private final HashMap<State, BiConsumer<ReplyKeyboardMarkup, SendMessage>> replyKeyboardForStates;
+    private final HashMap<State, BiConsumer<InlineKeyboardMarkup, SendMessage>> inlineKeyboardForStates;
 
     public GetMyMoneyBot()
     {
         this.modelBot = new ModelBot();
         this.modelBot.addObserver(this);
         this.answersForStates = new HashMap<>();
+        this.replyKeyboardForStates = new HashMap<>();
+        this.inlineKeyboardForStates = new HashMap<>();
         this.initializationAnswers();
+        this.initializationReplyKeyboards(this.replyKeyboardForStates);
+        this.initializationInlineKeyboards(this.inlineKeyboardForStates);
     }
 
     public void onUpdateReceived(Update update) {
         Message message;
+        CallbackQuery query;
         Long chatId;
         if (update.hasMessage()) {
             message = update.getMessage();
             chatId = update.getMessage().getChatId();
             State lastState = this.modelBot.getLastCurrentStateUser(chatId);
             System.out.println(lastState);
-            this.actionCommand(message, chatId, lastState);
-            this.actionFunction(message,chatId);
+            this.actionCommand(message.getText(), chatId, lastState);
+            this.actionFunction(message, chatId);
             System.out.println(this.modelBot.getUsersFault(chatId));
+            this.actionAfterFunction(chatId);
+        }
+        else if (update.hasCallbackQuery()) {
+            query = update.getCallbackQuery();
+            chatId = update.getCallbackQuery().getMessage().getChatId();
+            State lastState = this.modelBot.getLastCurrentStateUser(chatId);
+            this.actionCommand(query.getData(), chatId, lastState);
+            this.actionFunction(query, chatId);
             this.actionAfterFunction(chatId);
         }
     }
 
-    private void actionCommand(Message message, Long chatId, State lastState)
+    private void setBotReplyKeyboard(SendMessage sendMessage, Long chatId)
     {
-        if (message.isCommand()) {
-            this.modelBot.setCurrentStateUser(chatId, this.modelBot.getBotStateMap(message.getText(), lastState));
+        ReplyKeyboardMarkup replyKeyboardMarkup = new ReplyKeyboardMarkup();
+        replyKeyboardMarkup.setResizeKeyboard(true);
+        sendMessage.setReplyMarkup(replyKeyboardMarkup);
+        this.replyKeyboardForStates.get(modelBot.getCurrentStateUser(chatId)).accept(replyKeyboardMarkup, sendMessage);
+    }
+
+    private void setBotInlineKeyboard(SendMessage sendMessage, Long chatId)
+    {
+        InlineKeyboardMarkup inlineKeyboardMarkup = new InlineKeyboardMarkup();
+        sendMessage.setReplyMarkup(inlineKeyboardMarkup);
+        this.inlineKeyboardForStates.get(modelBot.getCurrentStateUser(chatId)).accept(inlineKeyboardMarkup, sendMessage);
+    }
+
+    private static void setInlineKeyboard(InlineKeyboardMarkup keyboardMarkup, SendMessage message) {
+        List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
+        List<InlineKeyboardButton> button1 = new ArrayList<>();
+        button1.add(new InlineKeyboardButton().setText("Загасить").setCallbackData("quench"));
+        button1.add(new InlineKeyboardButton().setText("Удалить").setCallbackData("delete"));
+        buttons.add(button1);
+
+        keyboardMarkup.setKeyboard(buttons);
+    }
+
+    private static void setAllMenuKeyboard(ReplyKeyboardMarkup replyKeyboardMarkup, SendMessage sendMessage)
+    {
+        ArrayList<KeyboardRow> buttons = new ArrayList<>();
+
+        KeyboardRow firstRow = new KeyboardRow();
+        KeyboardRow secondRow = new KeyboardRow();
+
+        firstRow.add("Добавить чек");
+        secondRow.add("Мои чеки");
+        secondRow.add("Моя статистика");
+
+
+        buttons.add(firstRow);
+        buttons.add(secondRow);
+
+        replyKeyboardMarkup.setKeyboard(buttons);
+    }
+
+    private static void setYesOrNoKeyboard(ReplyKeyboardMarkup replyKeyboardMarkup, SendMessage sendMessage)
+    {
+        ArrayList<KeyboardRow> buttons = new ArrayList<>();
+
+        KeyboardRow firstRow = new KeyboardRow();
+        KeyboardRow buttonMenu = new KeyboardRow();
+
+        firstRow.add("Да");
+        firstRow.add("Нет");
+        buttonMenu.add("Меню");
+
+        buttons.add(firstRow);
+        buttons.add(buttonMenu);
+
+        replyKeyboardMarkup.setKeyboard(buttons);
+    }
+
+    private static void setOnlyMenuKeyboard(ReplyKeyboardMarkup replyKeyboardMarkup, SendMessage sendMessage)
+    {
+        ArrayList<KeyboardRow> buttons = new ArrayList<>();
+
+        KeyboardRow buttonMenu = new KeyboardRow();
+        buttonMenu.add("Меню");
+        buttons.add(buttonMenu);
+
+        replyKeyboardMarkup.setKeyboard(buttons);
+    }
+
+    private void actionCommand(String command, Long chatId, State lastState)
+    {
+        State newState = this.modelBot.getBotStateMap(command, lastState);
+        System.out.println("--------" + newState);
+        if (newState != null) {
+            this.modelBot.setCurrentStateUser(chatId, newState);
             System.out.println("1 " + this.modelBot.getCurrentStateUser(chatId));
         }
         else if (lastState != State.WAIT_PHOTO && lastState != State.WAIT_CHECK_RECEIPT
@@ -65,6 +152,16 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             this.modelBot.getStateFunctionHashMap(
                     this.modelBot.getCurrentStateUser(chatId)).accept(this.modelBot, data);
             System.out.println("2 " + this.modelBot.getCurrentStateUser(chatId));
+        }
+    }
+
+    private void actionFunction(CallbackQuery query, Long chatId)
+    {
+        if (this.modelBot.getStateFunctionHashMap(this.modelBot.getCurrentStateUser(chatId)) != null) {
+            DataCommand data = null;
+            data = new DataCommand(query.getMessage().getText(), query.getMessage().getChatId(), query.getFrom().getUserName());
+            this.modelBot.getStateFunctionHashMap(
+                    this.modelBot.getCurrentStateUser(chatId)).accept(this.modelBot, data);
         }
     }
 
@@ -96,6 +193,11 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
                 .setChatId(chat_id)
                 .setText(message_text);
         try {
+            State currentState = this.modelBot.getCurrentStateUser(chat_id);
+            if (this.replyKeyboardForStates.containsKey(currentState))
+                setBotReplyKeyboard(message, chat_id);
+            if (this.inlineKeyboardForStates.containsKey(currentState))
+                setBotInlineKeyboard(message, chat_id);
             execute(message); // Sending our message object to user
         } catch (TelegramApiException e) {
             e.printStackTrace();
@@ -154,6 +256,31 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             this.sendMessage(chatId, this.answersForStates.get(this.modelBot.getCurrentStateUser(chatId)));
     }
 
+    private void initializationReplyKeyboards(HashMap<State, BiConsumer<ReplyKeyboardMarkup, SendMessage>> hm){
+        State[] statesOnlyMenu = new State[]{State.PRESS_ADD_RECEIPT, State.WAIT_USERNAMES_FRIENDS,
+                State.VIEW_SPECIFIC_RECEIPT, State.WAIT_SELECT_RECEIPT};
+        State[] statesYesOrNo = new State[]{State.WAIT_CHECK_RECEIPT, State.WAIT_CHECK_SHARE,
+                State.INCORRECT_USERNAMES};
+        State[] statesAllMenu = new State[]{State.SIGN_UP,
+                State.NOTIFY_MADE_RECEIPT, State.VIEW_AUTHORS, State.NO_CHECK_SHARE, State.GO_MENU};
+        for (State state: statesAllMenu
+             ) {
+            hm.put(state, GetMyMoneyBot::setAllMenuKeyboard);
+        }
+        for (State state: statesOnlyMenu
+        ) {
+            hm.put(state, GetMyMoneyBot::setOnlyMenuKeyboard);
+        }
+        for (State state: statesYesOrNo
+        ) {
+            hm.put(state, GetMyMoneyBot::setYesOrNoKeyboard);
+        }
+    }
+
+    private void initializationInlineKeyboards(HashMap<State, BiConsumer<InlineKeyboardMarkup, SendMessage>> hm) {
+        hm.put(State.GIVE_VIEW_SPECIFIC_RECEIPT, GetMyMoneyBot::setInlineKeyboard);
+    }
+
     private void initializationAnswers()
     {
         String text_sign = "Приветы! Используй клавиатуру ниже, чтобы " +
@@ -186,5 +313,6 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         this.answersForStates.put(State.WAIT_CHECK_SHARE, text_wait_share);
         this.answersForStates.put(State.NO_CHECK_SHARE, text_no_share);
         this.answersForStates.put(State.INCORRECT_USERNAMES, text_incorrect_users);
+        this.answersForStates.put(State.GO_MENU, "Хорошо, мой дорогой друг" + "\nЧто будем делать дальше?");
     }
 }
