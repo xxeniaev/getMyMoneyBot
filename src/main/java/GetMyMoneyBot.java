@@ -128,7 +128,6 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     private void actionCommand(String command, Long chatId, State lastState)
     {
         State newState = this.modelBot.getBotStateMap(command, lastState);
-        System.out.println("--------" + newState);
         if (newState != null) {
             this.modelBot.setCurrentStateUser(chatId, newState);
             System.out.println("1 " + this.modelBot.getCurrentStateUser(chatId));
@@ -176,7 +175,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             }
         }
         else {
-            sendMessage(chatId, "произошёл эксепшион, давай ещё раз");
+            sendMessage(chatId, "произошёл эксепшион, давай ещё раз", false);
         }
     }
 
@@ -184,20 +183,22 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
         if (chats_id.length != messages_text.length)
             throw new IllegalArgumentException("неправильные аргументы");
         for(int i = 0; i < chats_id.length; i++) {
-            sendMessage(chats_id[i], messages_text[i]);
+            sendMessage(chats_id[i], messages_text[i], true);
         }
     }
 
-    private void sendMessage(Long chat_id, String message_text) {
+    private void sendMessage(Long chat_id, String message_text, Boolean key) {
         SendMessage message = new SendMessage() // Create a message object object
                 .setChatId(chat_id)
                 .setText(message_text);
         try {
-            State currentState = this.modelBot.getCurrentStateUser(chat_id);
-            if (this.replyKeyboardForStates.containsKey(currentState))
-                setBotReplyKeyboard(message, chat_id);
-            if (this.inlineKeyboardForStates.containsKey(currentState))
-                setBotInlineKeyboard(message, chat_id);
+            if (!key) {
+                State currentState = this.modelBot.getCurrentStateUser(chat_id);
+                if (this.replyKeyboardForStates.containsKey(currentState))
+                    setBotReplyKeyboard(message, chat_id);
+                if (this.inlineKeyboardForStates.containsKey(currentState))
+                    setBotInlineKeyboard(message, chat_id);
+            }
             execute(message); // Sending our message object to user
         } catch (TelegramApiException e) {
             e.printStackTrace();
@@ -245,15 +246,16 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
 
     @Override
     public void sendNotification(Long[] chats_id, String[] messages) {
+        System.out.println("________ЗЗЗЗЗЗЗЗЗЗЗ");
         this.sendMessage(chats_id, messages);
     }
 
     public void modelIsChange(Long chatId) {
         String completeText = this.modelBot.getBufferAnswer();
         if (completeText != null)
-            this.sendMessage(chatId, completeText);
+            this.sendMessage(chatId, completeText, false);
         if (answersForStates.containsKey(this.modelBot.getCurrentStateUser(chatId)))
-            this.sendMessage(chatId, this.answersForStates.get(this.modelBot.getCurrentStateUser(chatId)));
+            this.sendMessage(chatId, this.answersForStates.get(this.modelBot.getCurrentStateUser(chatId)), false);
     }
 
     private void initializationReplyKeyboards(HashMap<State, BiConsumer<ReplyKeyboardMarkup, SendMessage>> hm){

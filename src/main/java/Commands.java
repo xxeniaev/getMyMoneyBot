@@ -194,7 +194,7 @@ public class Commands {
         ArrayList<String> debtors = currentReceipt.getDebtorsIds(debtorsUsernames);
 
         String[] debt_text = new String[debtors.size()];
-        int i = 1;
+        int i = 0;
         Long[] ids = new Long[debtors.size()];
 
         // for every debtor
