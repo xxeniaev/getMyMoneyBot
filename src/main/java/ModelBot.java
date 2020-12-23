@@ -162,7 +162,7 @@ public class ModelBot{
         hm.put(State.WAIT_CHECK_SHARE, Commands::areThereFriends);
         hm.put(State.WAIT_USERNAMES_FRIENDS, Commands::shareReceipt);
         hm.put(State.VIEW_SPECIFIC_RECEIPT, Commands::viewSpecificReceipt);
-        hm.put(State.QUENCH_SPECIFIC_RECEIPT, Commands::quenchReceipt);
+        hm.put(State.QUENCH_SPECIFIC_RECEIPT, Commands::quitReceipt);
         hm.put(State.DELETE_SPECIFIC_RECEIPT, Commands::deleteReceipt);
     }
 

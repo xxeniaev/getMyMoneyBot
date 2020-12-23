@@ -1,11 +1,11 @@
-import com.google.api.core.ApiFuture;
-import com.google.cloud.Tuple;
 import com.google.cloud.firestore.*;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
@@ -29,8 +29,6 @@ public class Commands {
         data.put("username", username);
         data.put("chatID", chatId);
         docRef.set(data);
-        //asynchronously write data
-        // ApiFuture<WriteResult> result = docRef.set(data);
     }
 
     public static void viewReceipts(ModelBot modelBot, DataCommand dataCommand) {
@@ -46,7 +44,7 @@ public class Commands {
         int i = 1;
         for (QueryDocumentSnapshot receiptDocument: receiptsDocuments){
             s.append("\u25aa\ufe0fЧек ").append("/").append(i).append(" от ");
-            String date = receiptDocument.getString("added").split(" ")[0];
+            String date = createBeautifulDate(receiptDocument.getString("added").split(" ")[0]);
             s.append(date).append("\n");
             i++;
         }
@@ -78,12 +76,17 @@ public class Commands {
 
         List<QueryDocumentSnapshot> goodsDocuments = getReceiptsDocuments(goods);
         text.append("Чек №").append(position + 1).append("\n");
-        String date = receiptDocument.getString("added").split(" ")[0];
-        text.append("Дата добавления чека: ").append(date).append("\n").append("\n");
+
+        String date = createBeautifulDate(receiptDocument.getString("added").split(" ")[0]);
+        text.append("Дата добавления чека: ").append(date).append("\n");
+        String quited = (receiptDocument.getBoolean("quited")) ? "Погашен \u2705" : "Не погашен";
+        text.append(quited).append("\n").append("\n");
+
         int i = 1;
         for (QueryDocumentSnapshot good: goodsDocuments
              ) {
-            text.append(i).append(". ").append(good.getId()).append(".\n").append(good.getDouble("price")*good.getDouble("quantity")).append(" р").append("\n");
+            text.append(i).append(". ").append(good.getId()).append(".\n")
+                    .append(good.getDouble("price")*good.getDouble("quantity")).append(" р").append("\n");
             i++;
         }
         modelBot.setBufferAnswer(text.toString());
@@ -140,17 +143,24 @@ public class Commands {
         3 - сумма*/
     }
 
-    private static QueryDocumentSnapshot getReceiptElement(DataCommand dataCommand)
+    private static DocumentReference getReceiptElement(DataCommand dataCommand)
     {
         Pattern pattern = Pattern.compile("Чек №(\\d+?)\\n");
         Matcher matcher = pattern.matcher(dataCommand.getTextMessage());
         if (matcher.find()) {
             int position = Integer.parseInt(matcher.group(1)) - 1;
             Firestore db = FirestoreDB.getInstance().db;
-            CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
-                    .collection("receipts");
-            QueryDocumentSnapshot receiptDocument = getReceiptsDocuments(receipts).get(position);
-            return receiptDocument;
+            Iterable<DocumentReference> receipts = db.collection("users").document(dataCommand.getChatID().toString())
+                    .collection("receipts").listDocuments();
+            DocumentReference documentReference = null;
+            int i = 0;
+            for (DocumentReference receiptDocument: receipts){
+                if (i==position){
+                    documentReference = receiptDocument;
+                }
+                i++;
+            }
+            return documentReference;
         }
         return null;
     }
@@ -166,14 +176,18 @@ public class Commands {
         }
     }
 
-    public static void quenchReceipt(ModelBot modelBot, DataCommand dataCommand)
+    public static void quitReceipt(ModelBot modelBot, DataCommand dataCommand)
     {
-        QueryDocumentSnapshot queryDocumentSnapshot = getReceiptElement(dataCommand);
-    }
+        DocumentReference documentReference = getReceiptElement(dataCommand);
+
+        Map<String, Object> updateReceiptData = new HashMap<>();
+        updateReceiptData.put("quited", true);
+        documentReference.set(updateReceiptData, SetOptions.merge());    }
 
     public static void deleteReceipt(ModelBot modelBot, DataCommand dataCommand)
     {
-        QueryDocumentSnapshot queryDocumentSnapshot = getReceiptElement(dataCommand);
+        DocumentReference documentReference = getReceiptElement(dataCommand);
+        documentReference.delete();
     }
 
     public static void shareReceipt(ModelBot modelBot, DataCommand dataCommand)
@@ -226,23 +240,11 @@ public class Commands {
         return usernames.size() == debtorsIds.size();
     }
 
-//    private static boolean checkIfUserExists(String debtorUsername){
-//        Firestore db = FirestoreDB.getInstance().db;
-//        // тут надо переделать, вместо debtorUsername надо его chatId
-//        DocumentReference docRef = db.collection("users").document(debtorUsername);
-//        ApiFuture<DocumentSnapshot> future = docRef.get();
-//        DocumentSnapshot user = null;
-//        try {
-//            user = future.get();
-//        } catch (InterruptedException | ExecutionException e) {
-//            e.printStackTrace();
-//        }
-//        if (user.exists()) {
-//            System.out.println("СУЩЕСТВУЕТ");
-//            return true;
-//        }
-//        else {
-//            return false;
-//        }
-//    }
+    private static String createBeautifulDate(String date){
+        String[] splitDate = date.split("/");
+        GregorianCalendar beautifulDate = new GregorianCalendar(Integer.parseInt(splitDate[0]),
+                Integer.parseInt(splitDate[1])-1, Integer.parseInt(splitDate[2]));
+        DateFormat df = new SimpleDateFormat("dd MMM yyyy");
+        return df.format(beautifulDate.getTime());
+    }
 }
