@@ -1,3 +1,4 @@
+import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 
 import java.io.FileNotFoundException;
@@ -37,12 +38,8 @@ public class Commands {
         Firestore db = FirestoreDB.getInstance().db;
         CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
                 .collection("receipts");
-        receipts.orderBy("addition date", Query.Direction.ASCENDING);
 
         List<QueryDocumentSnapshot> receiptsDocuments = getReceiptsDocuments(receipts);
-        sortReceipts(receiptsDocuments);
-        // составлять сообщение с юзера
-        // сделать, чтобы чеки выводились сортированно по  датам, а не рандомно
         StringBuilder s = new StringBuilder();
         s.append("Вот твои чеки, пользуйся :)\n\n");
         int i = 1;
@@ -50,11 +47,7 @@ public class Commands {
             if (receiptDocument.getBoolean("deleted"))
                 continue;
             s.append("\u25aa\ufe0fЧек ").append("/").append(i).append(" от ");
-            String date;
-            if (receiptDocument.getString("addition date") == null)
-                date = "???????????";
-            else
-                date = createBeautifulDate(receiptDocument.getString("addition date").split(" ")[0]);
+            String date = createBeautifulDate(receiptDocument.getData().get("addition date").toString().split("T")[0]);
             s.append(date).append("\n");
             i++;
         }
@@ -62,15 +55,20 @@ public class Commands {
 
     }
 
-    private static List<QueryDocumentSnapshot> getReceiptsDocuments(CollectionReference receipts)
+    private static List<QueryDocumentSnapshot> getReceiptsDocuments(CollectionReference collectionReference)
     {
-        QuerySnapshot future = null;
+        QuerySnapshot querySnapshot = null;
         try {
-            future = receipts.get().get();
+            if (collectionReference.getId().equals("receipts")) {
+                querySnapshot = collectionReference.orderBy("addition date", Query.Direction.ASCENDING).get().get();
+            }
+            else {
+                querySnapshot = collectionReference.get().get();
+            }
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
-        return future.getDocuments();
+        return querySnapshot.getDocuments();
     }
 
     private static QueryDocumentSnapshot getElement(int position, String id)
@@ -78,11 +76,10 @@ public class Commands {
         Firestore db = FirestoreDB.getInstance().db;
         CollectionReference receipts = db.collection("users").document(id)
                 .collection("receipts");
-        List<QueryDocumentSnapshot> receiptsDocumetns = getReceiptsDocuments(receipts);
-        sortReceipts(receiptsDocumetns);
+        List<QueryDocumentSnapshot> receiptsDocuments = getReceiptsDocuments(receipts);
 
         int i = 0;
-        for (QueryDocumentSnapshot receiptDocument: receiptsDocumetns){
+        for (QueryDocumentSnapshot receiptDocument: receiptsDocuments){
             if (receiptDocument.getBoolean("deleted"))
                 continue;
             if (i==position){
@@ -91,11 +88,6 @@ public class Commands {
             i++;
         }
         return null;
-    }
-
-    private static void sortReceipts(List<QueryDocumentSnapshot> receipts)
-    {
-
     }
 
     public static void viewSpecificReceipt(ModelBot modelBot, DataCommand dataCommand)
@@ -108,18 +100,13 @@ public class Commands {
                 .collection("receipts");
         QueryDocumentSnapshot receiptDocument = getElement(position, dataCommand.getChatID().toString());
 
-
         CollectionReference goods = receipts.document(receiptDocument.getId()).collection("goods");
         List<QueryDocumentSnapshot> goodsDocuments = getReceiptsDocuments(goods);
 
         text.append("Чек №").append(position + 1).append("\n");
-        String date = "?????????";
-        if (receiptDocument.getString("addition date") != null)
-            date = createBeautifulDate(receiptDocument.getString("addition date").split(" ")[0]);
+        String date = createBeautifulDate(receiptDocument.getData().get("addition date").toString().split("T")[0]);
         text.append("Дата добавления чека: ").append(date).append("\n");
-        String quited = "????????????";
-        if (receiptDocument.getBoolean("quited") != null)
-            quited = (receiptDocument.getBoolean("quited")) ? "Погашен \u2705" : "Не погашен";
+        String quited = (receiptDocument.getBoolean("quited")) ? "Погашен \u2705" : "Не погашен";
         text.append(quited).append("\n").append("\n");
 
         int i = 1;
@@ -131,7 +118,6 @@ public class Commands {
             i++;
         }
         modelBot.setBufferAnswer(text.toString());
-
     }
 
     public static void viewStatistic(ModelBot modelBot, DataCommand dataCommand) {
@@ -170,16 +156,6 @@ public class Commands {
             Receipt receipt = modelBot.getUserReceipt(dataCommand.getChatID());
             receipt.receiptToDatabase(dataCommand.getChatID().toString());
         }
-
-        // а тута всё, можно метод для базы данных
-        /* modelBot.getUserReceipt(dataCommand.getChatID()); - обращение
-        к словарю, который содержит чек.
-        написал метод, чтобы чек можно было представить в виде листа из массивов string,
-        где индексы
-        0 - имя продукта
-        1 - цена за один
-        2 - количество
-        3 - сумма*/
     }
 
     private static DocumentReference getReceiptElement(DataCommand dataCommand)
@@ -219,7 +195,6 @@ public class Commands {
         Map<String, Object> updateReceiptData = new HashMap<>();
         updateReceiptData.put("deleted", true);
         documentReference.set(updateReceiptData, SetOptions.merge());;
-
     }
 
     public static void shareReceipt(ModelBot modelBot, DataCommand dataCommand)
@@ -255,7 +230,6 @@ public class Commands {
 
         }
         modelBot.sendNotification(ids, debt_text);
-
     }
 
     private static ArrayList<String> parseDebtorsString(String string)
@@ -273,7 +247,7 @@ public class Commands {
     }
 
     private static String createBeautifulDate(String date){
-        String[] splitDate = date.split("/");
+        String[] splitDate = date.split("-");
         GregorianCalendar beautifulDate = new GregorianCalendar(Integer.parseInt(splitDate[0]),
                 Integer.parseInt(splitDate[1])-1, Integer.parseInt(splitDate[2]));
         DateFormat df = new SimpleDateFormat("dd MMM yyyy");
