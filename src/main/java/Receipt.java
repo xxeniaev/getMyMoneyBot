@@ -65,7 +65,7 @@ public class Receipt{
         Firestore db = FirestoreDB.getInstance().db;
         DocumentReference receipt = db.collection("users").document(chatId).collection("receipts").document();
         Map<String, Object> receiptData = new HashMap<>();
-        receiptData.put("added", this.addition_date);
+        receiptData.put("addition date", this.addition_date);
         receiptData.put("ticket date", ticketDate
                 .replaceAll("([-])", "/").replaceAll("([T])", " "));
         receiptData.put("sum", sum);

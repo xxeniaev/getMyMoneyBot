@@ -11,6 +11,8 @@ import java.util.concurrent.ExecutionException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static java.math.BigDecimal.ROUND_HALF_UP;
+
 public class Commands {
     public ModelBot modelBot;
 
@@ -35,6 +37,7 @@ public class Commands {
         Firestore db = FirestoreDB.getInstance().db;
         CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
                 .collection("receipts");
+        receipts.orderBy("addition date", Query.Direction.ASCENDING);
 
         List<QueryDocumentSnapshot> receiptsDocuments = getReceiptsDocuments(receipts);
         sortReceipts(receiptsDocuments);
@@ -47,11 +50,11 @@ public class Commands {
             if (receiptDocument.getBoolean("deleted"))
                 continue;
             s.append("\u25aa\ufe0fЧек ").append("/").append(i).append(" от ");
-            String date = null;
-            if (receiptDocument.getString("added") == null)
+            String date;
+            if (receiptDocument.getString("addition date") == null)
                 date = "???????????";
             else
-                date = createBeautifulDate(receiptDocument.getString("added").split(" ")[0]);
+                date = createBeautifulDate(receiptDocument.getString("addition date").split(" ")[0]);
             s.append(date).append("\n");
             i++;
         }
@@ -111,8 +114,8 @@ public class Commands {
 
         text.append("Чек №").append(position + 1).append("\n");
         String date = "?????????";
-        if (receiptDocument.getString("added") != null)
-            date = createBeautifulDate(receiptDocument.getString("added").split(" ")[0]);
+        if (receiptDocument.getString("addition date") != null)
+            date = createBeautifulDate(receiptDocument.getString("addition date").split(" ")[0]);
         text.append("Дата добавления чека: ").append(date).append("\n");
         String quited = "????????????";
         if (receiptDocument.getBoolean("quited") != null)
@@ -122,8 +125,9 @@ public class Commands {
         int i = 1;
         for (QueryDocumentSnapshot good: goodsDocuments
              ) {
-            text.append(i).append(". ").append(good.getId()).append(".\n")
-                    .append(good.getDouble("price")*good.getDouble("quantity")).append(" р").append("\n");
+            BigDecimal price = BigDecimal.valueOf(good.getDouble("price")*good.getDouble("quantity"))
+                    .setScale(2, ROUND_HALF_UP);
+            text.append(i).append(". ").append(good.getId()).append(".\n").append(price).append(" р").append("\n");
             i++;
         }
         modelBot.setBufferAnswer(text.toString());
