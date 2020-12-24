@@ -1,6 +1,9 @@
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
+import org.telegram.telegrambots.meta.api.methods.AnswerCallbackQuery;
+import org.telegram.telegrambots.meta.api.methods.AnswerInlineQuery;
 import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.*;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.InlineKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
@@ -45,6 +48,7 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             this.actionAfterFunction(chatId);
         }
         else if (update.hasCallbackQuery()) {
+            sendCallBack(update.getCallbackQuery().getId());
             query = update.getCallbackQuery();
             chatId = update.getCallbackQuery().getMessage().getChatId();
             State lastState = this.modelBot.getLastCurrentStateUser(chatId);
@@ -141,8 +145,9 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     private void actionFunction(Message message, Long chatId) {
         if (this.modelBot.getStateFunctionHashMap(this.modelBot.getCurrentStateUser(chatId)) != null) {
             DataCommand data = null;
-            if (this.modelBot.getCurrentStateUser(chatId) != State.WAIT_PHOTO)
+            if (this.modelBot.getCurrentStateUser(chatId) != State.WAIT_PHOTO) {
                 data = new DataCommand(message.getText(), chatId, message.getChat().getUserName());
+            }
             else if (message.hasPhoto())
                 data = new DataCommand(this.getLinkPhoto(message), chatId, message.getChat().getUserName());
             else {
@@ -184,6 +189,20 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
             throw new IllegalArgumentException("неправильные аргументы");
         for(int i = 0; i < chats_id.length; i++) {
             sendMessage(chats_id[i], messages_text[i], true);
+        }
+    }
+
+    private void sendCallBack(String id)
+    {
+        AnswerCallbackQuery answerCallbackQuery = new AnswerCallbackQuery();
+        answerCallbackQuery.setCallbackQueryId(id);
+        answerCallbackQuery.setText("понял-принял");
+        answerCallbackQuery.setShowAlert(true);
+        try
+        {
+            execute(answerCallbackQuery);
+        } catch (TelegramApiException e) {
+            e.printStackTrace();
         }
     }
 

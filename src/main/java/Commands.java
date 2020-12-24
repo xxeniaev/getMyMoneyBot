@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 public class Commands {
     public ModelBot modelBot;
 
-    public Commands(ModelBot modelBot) {this.modelBot = modelBot;}
+    public Commands(ModelBot modelBot) {this.modelBot = modelBot; }
     public static void signUp(ModelBot modelBot, DataCommand dataCommand)
     {
         /* тута я получаю ник и id для последующего записывания в базу,
@@ -37,14 +37,21 @@ public class Commands {
                 .collection("receipts");
 
         List<QueryDocumentSnapshot> receiptsDocuments = getReceiptsDocuments(receipts);
+        sortReceipts(receiptsDocuments);
         // составлять сообщение с юзера
         // сделать, чтобы чеки выводились сортированно по  датам, а не рандомно
         StringBuilder s = new StringBuilder();
         s.append("Вот твои чеки, пользуйся :)\n\n");
         int i = 1;
         for (QueryDocumentSnapshot receiptDocument: receiptsDocuments){
+            if (receiptDocument.getBoolean("deleted"))
+                continue;
             s.append("\u25aa\ufe0fЧек ").append("/").append(i).append(" от ");
-            String date = createBeautifulDate(receiptDocument.getString("added").split(" ")[0]);
+            String date = null;
+            if (receiptDocument.getString("added") == null)
+                date = "???????????";
+            else
+                date = createBeautifulDate(receiptDocument.getString("added").split(" ")[0]);
             s.append(date).append("\n");
             i++;
         }
@@ -63,6 +70,31 @@ public class Commands {
         return future.getDocuments();
     }
 
+    private static QueryDocumentSnapshot getElement(int position, String id)
+    {
+        Firestore db = FirestoreDB.getInstance().db;
+        CollectionReference receipts = db.collection("users").document(id)
+                .collection("receipts");
+        List<QueryDocumentSnapshot> receiptsDocumetns = getReceiptsDocuments(receipts);
+        sortReceipts(receiptsDocumetns);
+
+        int i = 0;
+        for (QueryDocumentSnapshot receiptDocument: receiptsDocumetns){
+            if (receiptDocument.getBoolean("deleted"))
+                continue;
+            if (i==position){
+                return receiptDocument;
+            }
+            i++;
+        }
+        return null;
+    }
+
+    private static void sortReceipts(List<QueryDocumentSnapshot> receipts)
+    {
+
+    }
+
     public static void viewSpecificReceipt(ModelBot modelBot, DataCommand dataCommand)
     {
         StringBuilder text = new StringBuilder();
@@ -71,15 +103,20 @@ public class Commands {
         Firestore db = FirestoreDB.getInstance().db;
         CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
                 .collection("receipts");
-        QueryDocumentSnapshot receiptDocument = getReceiptsDocuments(receipts).get(position);
+        QueryDocumentSnapshot receiptDocument = getElement(position, dataCommand.getChatID().toString());
+
+
         CollectionReference goods = receipts.document(receiptDocument.getId()).collection("goods");
-
         List<QueryDocumentSnapshot> goodsDocuments = getReceiptsDocuments(goods);
-        text.append("Чек №").append(position + 1).append("\n");
 
-        String date = createBeautifulDate(receiptDocument.getString("added").split(" ")[0]);
+        text.append("Чек №").append(position + 1).append("\n");
+        String date = "?????????";
+        if (receiptDocument.getString("added") != null)
+            date = createBeautifulDate(receiptDocument.getString("added").split(" ")[0]);
         text.append("Дата добавления чека: ").append(date).append("\n");
-        String quited = (receiptDocument.getBoolean("quited")) ? "Погашен \u2705" : "Не погашен";
+        String quited = "????????????";
+        if (receiptDocument.getBoolean("quited") != null)
+            quited = (receiptDocument.getBoolean("quited")) ? "Погашен \u2705" : "Не погашен";
         text.append(quited).append("\n").append("\n");
 
         int i = 1;
@@ -100,14 +137,12 @@ public class Commands {
 
     public static void addReceipt(ModelBot modelBot, DataCommand dataCommand) {
         String linkPhoto = dataCommand.getTextMessage();
-        System.out.println(linkPhoto);
         QRParamsReader qrParamsReader;
         try {
             qrParamsReader = new QRParamsReader(linkPhoto);
         } catch (FileNotFoundException | UnsupportedEncodingException e) {
             e.printStackTrace();
             modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
-            System.out.println("Fail");
             return;
         }
         IExtractable apiExtractor = new DetailsAPIExtractor();
@@ -149,18 +184,7 @@ public class Commands {
         Matcher matcher = pattern.matcher(dataCommand.getTextMessage());
         if (matcher.find()) {
             int position = Integer.parseInt(matcher.group(1)) - 1;
-            Firestore db = FirestoreDB.getInstance().db;
-            Iterable<DocumentReference> receipts = db.collection("users").document(dataCommand.getChatID().toString())
-                    .collection("receipts").listDocuments();
-            DocumentReference documentReference = null;
-            int i = 0;
-            for (DocumentReference receiptDocument: receipts){
-                if (i==position){
-                    documentReference = receiptDocument;
-                }
-                i++;
-            }
-            return documentReference;
+            return getElement(position, dataCommand.getChatID().toString()).getReference();
         }
         return null;
     }
@@ -187,7 +211,11 @@ public class Commands {
     public static void deleteReceipt(ModelBot modelBot, DataCommand dataCommand)
     {
         DocumentReference documentReference = getReceiptElement(dataCommand);
-        documentReference.delete();
+
+        Map<String, Object> updateReceiptData = new HashMap<>();
+        updateReceiptData.put("deleted", true);
+        documentReference.set(updateReceiptData, SetOptions.merge());;
+
     }
 
     public static void shareReceipt(ModelBot modelBot, DataCommand dataCommand)
