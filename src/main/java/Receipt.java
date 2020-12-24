@@ -70,10 +70,8 @@ public class Receipt{
                 .replaceAll("([-])", "/").replaceAll("([T])", " "));
         receiptData.put("sum", sum);
         receiptData.put("QR-code", "QR-code");
-        // удален чек из базы или нет
-        receiptData.put("deleted", false);
         // погашен чек или нет
-        receiptData.put("canceled", false);
+        receiptData.put("quited", false);
         receipt.set(receiptData);
 
         CollectionReference goods = receipt.collection("goods");
@@ -139,30 +137,4 @@ public class Receipt{
         System.out.println(debt);
         return debt;
     }
-
-    private void deleteReceipt(String receiptId){
-        // ...
-        // ...
-        }
-
-    private void cancelReceipt(String receiptId){
-        // ...
-        // ...
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }

@@ -72,8 +72,8 @@ public class GetMyMoneyBot extends TelegramLongPollingBot implements IObserver {
     private static void setInlineKeyboard(InlineKeyboardMarkup keyboardMarkup, SendMessage message) {
         List<List<InlineKeyboardButton>> buttons = new ArrayList<>();
         List<InlineKeyboardButton> button1 = new ArrayList<>();
-        button1.add(new InlineKeyboardButton().setText("Загасить").setCallbackData("quench"));
-        button1.add(new InlineKeyboardButton().setText("Удалить").setCallbackData("delete"));
+        button1.add(new InlineKeyboardButton().setText("Загасить\ud83d\udcb8").setCallbackData("quench"));
+        button1.add(new InlineKeyboardButton().setText("Удалить\ud83e\udde8").setCallbackData("delete"));
         buttons.add(button1);
 
         keyboardMarkup.setKeyboard(buttons);
