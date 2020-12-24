@@ -72,6 +72,7 @@ public class Receipt{
         receiptData.put("QR-code", "QR-code");
         // погашен чек или нет
         receiptData.put("quited", false);
+        receiptData.put("deleted", false);
         receipt.set(receiptData);
 
         CollectionReference goods = receipt.collection("goods");
