@@ -5,13 +5,19 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static java.math.BigDecimal.ROUND_HALF_UP;
 
 public class Commands {
     public ModelBot modelBot;
 
-    public Commands(ModelBot modelBot) {this.modelBot = modelBot;}
+    public Commands(ModelBot modelBot) {this.modelBot = modelBot; }
     public static void signUp(ModelBot modelBot, DataCommand dataCommand)
     {
         /* тута я получаю ник и id для последующего записывания в базу,
@@ -26,38 +32,92 @@ public class Commands {
         data.put("username", username);
         data.put("chatID", chatId);
         docRef.set(data);
-        //asynchronously write data
-        // ApiFuture<WriteResult> result = docRef.set(data);
     }
 
     public static void viewReceipts(ModelBot modelBot, DataCommand dataCommand) {
         Firestore db = FirestoreDB.getInstance().db;
-        ArrayList<Receipt> myReceipts = new ArrayList<>();
         CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
                 .collection("receipts");
-        ApiFuture<QuerySnapshot> future = receipts.get();
-        QuerySnapshot querySnapshotReceipts = null;
-        try {
-            querySnapshotReceipts = future.get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-        }
-        List<QueryDocumentSnapshot> receiptsDocuments = querySnapshotReceipts.getDocuments();
 
-        // составлять сообщение с юзера
-        // сделать, чтобы чеки выводились сортированно по  датам, а не рандомно
+        List<QueryDocumentSnapshot> receiptsDocuments = getReceiptsDocuments(receipts);
         StringBuilder s = new StringBuilder();
-        s.append("Вот твои чеки, пользуйся\u2665\ufe0f\n\n");
-        int i = 0;
+        s.append("Вот твои чеки, пользуйся :)\n\n");
+        int i = 1;
         for (QueryDocumentSnapshot receiptDocument: receiptsDocuments){
-            s.append("/").append(i).append(" ");
-            String date = receiptDocument.getString("ticket date");
+            if (receiptDocument.getBoolean("deleted"))
+                continue;
+            s.append("\u25aa\ufe0fЧек ").append("/").append(i).append(" от ");
+            String date = createBeautifulDate(receiptDocument.getData().get("addition date").toString().split("T")[0]);
             s.append(date).append("\n");
             i++;
         }
-        // ...
-        // ...
+        modelBot.setBufferAnswer(s.toString());
 
+    }
+
+    private static List<QueryDocumentSnapshot> getReceiptsDocuments(CollectionReference collectionReference)
+    {
+        QuerySnapshot querySnapshot = null;
+        try {
+            if (collectionReference.getId().equals("receipts")) {
+                querySnapshot = collectionReference.orderBy("addition date", Query.Direction.ASCENDING).get().get();
+            }
+            else {
+                querySnapshot = collectionReference.get().get();
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        return querySnapshot.getDocuments();
+    }
+
+    private static QueryDocumentSnapshot getElement(int position, String id)
+    {
+        Firestore db = FirestoreDB.getInstance().db;
+        CollectionReference receipts = db.collection("users").document(id)
+                .collection("receipts");
+        List<QueryDocumentSnapshot> receiptsDocuments = getReceiptsDocuments(receipts);
+
+        int i = 0;
+        for (QueryDocumentSnapshot receiptDocument: receiptsDocuments){
+            if (receiptDocument.getBoolean("deleted"))
+                continue;
+            if (i==position){
+                return receiptDocument;
+            }
+            i++;
+        }
+        return null;
+    }
+
+    public static void viewSpecificReceipt(ModelBot modelBot, DataCommand dataCommand)
+    {
+        StringBuilder text = new StringBuilder();
+        StringBuilder s = new StringBuilder(dataCommand.getTextMessage()).deleteCharAt(0);
+        int position = Integer.parseInt(s.toString()) - 1;
+        Firestore db = FirestoreDB.getInstance().db;
+        CollectionReference receipts = db.collection("users").document(dataCommand.getChatID().toString())
+                .collection("receipts");
+        QueryDocumentSnapshot receiptDocument = getElement(position, dataCommand.getChatID().toString());
+
+        CollectionReference goods = receipts.document(receiptDocument.getId()).collection("goods");
+        List<QueryDocumentSnapshot> goodsDocuments = getReceiptsDocuments(goods);
+
+        text.append("Чек №").append(position + 1).append("\n");
+        String date = createBeautifulDate(receiptDocument.getData().get("addition date").toString().split("T")[0]);
+        text.append("Дата добавления чека: ").append(date).append("\n");
+        String quited = (receiptDocument.getBoolean("quited")) ? "Погашен \u2705" : "Не погашен";
+        text.append(quited).append("\n").append("\n");
+
+        int i = 1;
+        for (QueryDocumentSnapshot good: goodsDocuments
+             ) {
+            BigDecimal price = BigDecimal.valueOf(good.getDouble("price")*good.getDouble("quantity"))
+                    .setScale(2, ROUND_HALF_UP);
+            text.append(i).append(". ").append(good.getId()).append(".\n").append(price).append(" р").append("\n");
+            i++;
+        }
+        modelBot.setBufferAnswer(text.toString());
     }
 
     public static void viewStatistic(ModelBot modelBot, DataCommand dataCommand) {
@@ -67,14 +127,12 @@ public class Commands {
 
     public static void addReceipt(ModelBot modelBot, DataCommand dataCommand) {
         String linkPhoto = dataCommand.getTextMessage();
-        System.out.println(linkPhoto);
         QRParamsReader qrParamsReader;
         try {
             qrParamsReader = new QRParamsReader(linkPhoto);
         } catch (FileNotFoundException | UnsupportedEncodingException e) {
             e.printStackTrace();
             modelBot.setUsersFault(dataCommand.getChatID(), Boolean.TRUE);
-            System.out.println("Fail");
             return;
         }
         IExtractable apiExtractor = new DetailsAPIExtractor();
@@ -98,16 +156,17 @@ public class Commands {
             Receipt receipt = modelBot.getUserReceipt(dataCommand.getChatID());
             receipt.receiptToDatabase(dataCommand.getChatID().toString());
         }
+    }
 
-        // а тута всё, можно метод для базы данных
-        /* modelBot.getUserReceipt(dataCommand.getChatID()); - обращение
-        к словарю, который содержит чек.
-        написал метод, чтобы чек можно было представить в виде листа из массивов string,
-        где индексы
-        0 - имя продукта
-        1 - цена за один
-        2 - количество
-        3 - сумма*/
+    private static DocumentReference getReceiptElement(DataCommand dataCommand)
+    {
+        Pattern pattern = Pattern.compile("Чек №(\\d+?)\\n");
+        Matcher matcher = pattern.matcher(dataCommand.getTextMessage());
+        if (matcher.find()) {
+            int position = Integer.parseInt(matcher.group(1)) - 1;
+            return getElement(position, dataCommand.getChatID().toString()).getReference();
+        }
+        return null;
     }
 
     public static void areThereFriends(ModelBot modelBot, DataCommand dataCommand)
@@ -121,6 +180,23 @@ public class Commands {
         }
     }
 
+    public static void quitReceipt(ModelBot modelBot, DataCommand dataCommand)
+    {
+        DocumentReference documentReference = getReceiptElement(dataCommand);
+
+        Map<String, Object> updateReceiptData = new HashMap<>();
+        updateReceiptData.put("quited", true);
+        documentReference.set(updateReceiptData, SetOptions.merge());    }
+
+    public static void deleteReceipt(ModelBot modelBot, DataCommand dataCommand)
+    {
+        DocumentReference documentReference = getReceiptElement(dataCommand);
+
+        Map<String, Object> updateReceiptData = new HashMap<>();
+        updateReceiptData.put("deleted", true);
+        documentReference.set(updateReceiptData, SetOptions.merge());;
+    }
+
     public static void shareReceipt(ModelBot modelBot, DataCommand dataCommand)
     {
         Long user = dataCommand.getChatID();
@@ -129,9 +205,14 @@ public class Commands {
         // получаю юзернеймы должников
         ArrayList<String> debtorsUsernames = parseDebtorsString(dataCommand.getTextMessage());
 
+        if (!checkIfAllUsersExist(debtorsUsernames, modelBot.getUserReceipt(dataCommand.getChatID()))) {
+            modelBot.setCurrentStateUser(dataCommand.getChatID(), State.INCORRECT_USERNAMES);
+            return;
+        }
+
         // добавляю участников в чек
         currentReceipt.addParticipants(user.toString(), debtorsUsernames);
-        ArrayList<String> debtors =currentReceipt.getDebtorsIds(debtorsUsernames);
+        ArrayList<String> debtors = currentReceipt.getDebtorsIds(debtorsUsernames);
 
         String[] debt_text = new String[debtors.size()];
         int i = 0;
@@ -149,7 +230,6 @@ public class Commands {
 
         }
         modelBot.sendNotification(ids, debt_text);
-
     }
 
     private static ArrayList<String> parseDebtorsString(String string)
@@ -159,31 +239,18 @@ public class Commands {
                 .split(" ")));
     }
 
-    private static boolean checkIfAllUsersExist(String string, Receipt receipt)
+    private static boolean checkIfAllUsersExist(ArrayList<String> usernames, Receipt receipt)
     {
         // проверяет все ли пользователи есть в бд
-        ArrayList<String> debtorsUsernames = parseDebtorsString(string);
-        ArrayList<String> debtorsIds = receipt.getDebtorsIds(debtorsUsernames);
-        return debtorsUsernames.size() <= debtorsIds.size();
+        ArrayList<String> debtorsIds = receipt.getDebtorsIds(usernames);
+        return usernames.size() == debtorsIds.size();
     }
 
-//    private static boolean checkIfUserExists(String debtorUsername){
-//        Firestore db = FirestoreDB.getInstance().db;
-//        // тут надо переделать, вместо debtorUsername надо его chatId
-//        DocumentReference docRef = db.collection("users").document(debtorUsername);
-//        ApiFuture<DocumentSnapshot> future = docRef.get();
-//        DocumentSnapshot user = null;
-//        try {
-//            user = future.get();
-//        } catch (InterruptedException | ExecutionException e) {
-//            e.printStackTrace();
-//        }
-//        if (user.exists()) {
-//            System.out.println("СУЩЕСТВУЕТ");
-//            return true;
-//        }
-//        else {
-//            return false;
-//        }
-//    }
+    private static String createBeautifulDate(String date){
+        String[] splitDate = date.split("-");
+        GregorianCalendar beautifulDate = new GregorianCalendar(Integer.parseInt(splitDate[0]),
+                Integer.parseInt(splitDate[1])-1, Integer.parseInt(splitDate[2]));
+        DateFormat df = new SimpleDateFormat("dd MMM yyyy");
+        return df.format(beautifulDate.getTime());
+    }
 }

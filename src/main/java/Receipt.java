@@ -1,5 +1,6 @@
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.cloud.firestore.*;
+import com.google.cloud.firestore.annotation.ServerTimestamp;
 
 import java.io.IOException;
 import java.math.BigDecimal;
@@ -19,6 +20,9 @@ public class Receipt{
     private DateFormat dateFormat = new SimpleDateFormat("yyyy/MM/dd HH:mm:ss");
     private Date currentDate = new Date();
     private String addition_date = dateFormat.format(currentDate);
+
+    @ServerTimestamp
+    Date time;
 
     public String receiptId;
 
@@ -65,15 +69,14 @@ public class Receipt{
         Firestore db = FirestoreDB.getInstance().db;
         DocumentReference receipt = db.collection("users").document(chatId).collection("receipts").document();
         Map<String, Object> receiptData = new HashMap<>();
-        receiptData.put("added", this.addition_date);
+        receiptData.put("addition date", FieldValue.serverTimestamp());
         receiptData.put("ticket date", ticketDate
                 .replaceAll("([-])", "/").replaceAll("([T])", " "));
         receiptData.put("sum", sum);
         receiptData.put("QR-code", "QR-code");
-        // удален чек из базы или нет
-        receiptData.put("deleted", false);
         // погашен чек или нет
-        receiptData.put("canceled", false);
+        receiptData.put("quited", false);
+        receiptData.put("deleted", false);
         receipt.set(receiptData);
 
         CollectionReference goods = receipt.collection("goods");
@@ -139,30 +142,4 @@ public class Receipt{
         System.out.println(debt);
         return debt;
     }
-
-    private void deleteReceipt(String receiptId){
-        // ...
-        // ...
-        }
-
-    private void cancelReceipt(String receiptId){
-        // ...
-        // ...
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 }
